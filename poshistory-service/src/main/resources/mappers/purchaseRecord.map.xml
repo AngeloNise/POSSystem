@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.purchasehistory.repository.PurchaseRecordRepository">
+
+    <resultMap id="PurchaseRecordMap" type="com.example.purchasehistory.models.PurchaseRecordDto">
+        <result property="id" column="id"/>
+        <result property="productName" column="product_name"/>
+        <result property="receiptNumber" column="receipt_number"/>
+        <result property="counter" column="counter"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdDate" column="created_date"/>
+    </resultMap>
+
+    <resultMap id="ReceiptDtoMap" type="com.example.purchasehistory.models.ReceiptDto">
+        <result property="receiptNumber" column="receipt_number"/>
+        <result property="productName" column="product_name"/>
+        <result property="serialNumber" column="serial_number"/>
+        <result property="price" column="price"/>
+        <result property="quantity" column="quantity"/>
+        <result property="totalPrice" column="total_price"/>
+        <result property="counter" column="counter"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdDate" column="created_date"/>
+    </resultMap>
+
+    <sql id="whereRecordList">
+        <where>
+            <if test="id != null and id != ''">
+                AND ri.id = #{id}
+            </if>
+
+            <if test="receiptNumber != null and receiptNumber != ''">
+                <bind name="likeReceiptNumber" value="'%' + receiptNumber + '%'"/>
+                AND r.receipt_number LIKE #{likeReceiptNumber}
+            </if>
+
+            <if test="productName != null and productName != ''">
+                <bind name="likeProductName" value="'%' + productName + '%'"/>
+                AND ri.product_name LIKE #{likeProductName}
+            </if>
+
+            <if test="counter != null and counter != ''">
+                <bind name="likeCounter" value="'%' + counter + '%'"/>
+                AND r.counter LIKE #{likeCounter}
+            </if>
+
+            <if test="createdBy != null and createdBy != ''">
+                <bind name="likeCreatedBy" value="'%' + createdBy + '%'"/>
+                AND r.created_by LIKE #{likeCreatedBy}
+            </if>
+
+            <if test="createdDate != null and createdDate != ''">
+                <bind name="likeCreatedDate" value="'%' + createdDate + '%'"/>
+                AND (
+                DATE_FORMAT(ri.created_date, '%Y-%m-%d') LIKE #{likeCreatedDate}
+                OR DATE_FORMAT(ri.created_date, '%m-%d') = #{createdDate}
+                OR DATE_FORMAT(ri.created_date, '%Y') = #{createdDate}
+                )
+            </if>
+        </where>
+    </sql>
+
+    <select id="getPurchaseRecords" resultMap="PurchaseRecordMap" parameterType="map">
+        SELECT
+            ri.id,
+            ri.product_name,
+            r.receipt_number,
+            r.counter,
+            r.created_by,
+            ri.created_date
+        FROM receipt r
+        LEFT JOIN receipt_item ri ON r.id = ri.receipt_id
+        <include refid="whereRecordList"/>
+        ORDER BY ri.created_date DESC
+        LIMIT #{limit} OFFSET #{start}
+    </select>
+
+    <select id="getTotalPurchaseRecordCount" resultType="int" parameterType="map">
+        SELECT COUNT(0)
+        FROM receipt r
+        LEFT JOIN receipt_item ri ON r.id = ri.receipt_id
+        <include refid="whereRecordList"/>
+    </select>
+
+    <delete id="deletePurchaseRecord" parameterType="int">
+        DELETE FROM receipt_item WHERE id = #{id}
+    </delete>
+
+    <select id="findReceiptByNumber" parameterType="string" resultMap="ReceiptDtoMap">
+        SELECT
+            r.receipt_number,
+            ri.product_name,
+            ri.serial_number,
+            ri.price,
+            ri.quantity,
+            ri.price * ri.quantity AS total_price,
+            r.counter,
+            r.created_by,
+            ri.created_date
+        FROM receipt r
+        LEFT JOIN receipt_item ri ON r.id = ri.receipt_id
+        WHERE r.receipt_number = #{receiptNumber}
+    </select>
+
+    <resultMap id="StoreResultMap" type="com.example.purchasehistory.models.StoreDto">
+        <result property="storeName" column="store_name" />
+        <result property="storeLogo" column="store_logo" />
+    </resultMap>
+
+    <select id="getStore" resultMap="StoreResultMap">
+        SELECT store_name, store_logo
+        FROM store
+        LIMIT 1
+    </select>
+</mapper>

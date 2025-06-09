@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.systemservice.repository.CategoryRepository">
+    <resultMap id="categoriesMap" type="com.microservice.systemservice.models.Categories">
+        <id property="categoryId" column="id"/>
+        <result property="categoryName" column="name"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="instanceId" column="instance_id"/>
+        <result property="code" column="code"/>
+        <result property="createdDate" column="created_date"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdId" column="created_id"/>
+        <result property="remarks" column="remarks"/>
+    </resultMap>
+    <select id="queryCategoriesAllList" resultMap="categoriesMap">
+        SELECT * FROM categories
+    </select>
+    <select id="queryCategoriesList" resultMap="categoriesMap">
+        SELECT * FROM categories where code = 1
+    </select>
+    <select id="queryToolsAndEquipmentList" resultMap="categoriesMap">
+        SELECT * FROM categories where code = 2
+    </select>
+    <select id="queryBrandAndModelList" resultMap="categoriesMap">
+        SELECT * FROM categories where code = 3
+    </select>
+    <select id="queryModelList" resultMap="categoriesMap">
+        SELECT * FROM categories where code = 5
+    </select>
+    <select id="queryLVTList" resultMap="categoriesMap">
+        SELECT * FROM categories where code = 6
+    </select>
+</mapper>

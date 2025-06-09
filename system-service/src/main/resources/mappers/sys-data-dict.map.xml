@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.systemservice.repository.DataDictionaryRepository">
+
+    <resultMap id="dataDictionaryMap" type="com.microservice.systemservice.models.DataDictionary">
+        <id property="dataDictID" column="id"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="category" column="category"/>
+        <result property="teNameId" column="te_name_id"/>
+        <result property="teName" column="te_name"/>
+        <result property="itemCodeId" column="item_code_id"/>
+        <result property="itemCode" column="item_code"/>
+        <result property="brandId" column="brand_id"/>
+        <result property="brand" column="brand"/>
+        <result property="modelId" column="model_id"/>
+        <result property="model" column="model"/>
+        <result property="specification" column="specification"/>
+        <result property="description" column="description"/>
+        <result property="lifeSpan" column="lifespan"/>
+        <result property="marketValue" column="market_value"/>
+        <result property="createdById" column="created_by_id"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdDate" column="created_date"/>
+        <result property="updatedById" column="updated_by_id"/>
+        <result property="updatedBy" column="updated_by"/>
+        <result property="updatedDate" column="updated_date"/>
+    </resultMap>
+
+    <resultMap id="attributedMap" type="com.microservice.systemservice.models.DataDictionary">
+        <id property="dataDictID" column="id"/>
+        <result property="name" column="name"/>
+        <result property="code" column="code"/>
+        <result property="codeName" column="code_name"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="parentName" column="parent_name"/>
+        <result property="instanceId" column="instance_id"/>
+    </resultMap>
+
+    <sql id="whereDDList">
+        <if test="category!=null and category != ''">
+            AND sdd.category = #{category}
+        </if>
+        <if test="toolName!=null and toolName != ''">
+            AND sdd.te_name like #{toolName}
+        </if>
+    </sql>
+
+    <select id="getTEDDList" resultMap="dataDictionaryMap">
+        SELECT
+        sdd.category category_id, c1.name category,
+        sdd.te_name te_name_id, c2.name te_name,
+        sdd.brand brand_id, c3.name brand,
+        sdd.model model_id, c5.name model,
+        sdd.item_code item_code_id, c4.name item_code,
+        sdd.id, sdd.specification, sdd.description, sdd.lifespan, sdd.market_value
+        FROM sys_data_dict sdd
+        INNER JOIN categories c1 ON c1.id = sdd.category
+        INNER JOIN categories c2 ON c2.id = sdd.te_name
+        INNER JOIN categories c3 ON c3.id = sdd.brand
+        INNER JOIN categories c4 ON c4.id = sdd.item_code
+        INNER JOIN categories c5 ON c5.id = sdd.model
+        <include refid="whereDDList"/>
+        LIMIT #{start}, #{limit};
+    </select>
+
+    <select id="getTEDDListCount" parameterType="Map" resultType="Integer">
+        SELECT COUNT(0)
+        FROM sys_data_dict sdd
+        INNER JOIN categories c1 ON c1.id = sdd.category
+        INNER JOIN categories c2 ON c2.id = sdd.te_name
+        INNER JOIN categories c3 ON c3.id = sdd.brand
+        INNER JOIN categories c4 ON c4.id = sdd.item_code
+        INNER JOIN categories c5 ON c5.id = sdd.model
+        <include refid="whereDDList"/>
+    </select>
+
+    <select id="getDDListFilterValues" resultType="Map">
+        SELECT id, code, parent_id, instance_id, name FROM categories  where code in (1,2,3,4,5,6,7,8,9,10)
+    </select>
+
+    <insert id="specificationCreate" parameterType="Map">
+        INSERT INTO sys_data_dict
+        (
+            category,
+            te_name,
+            item_code,
+            brand,
+            model,
+            specification,
+            description,
+            lifespan,
+            market_value,
+            created_by_id,
+            created_by,
+            created_date,
+            updated_by_id,
+            updated_by,
+            updated_date
+        )
+        VALUES
+            (
+                #{category},
+                #{teName},
+                #{itemCode},
+                #{brand},
+                #{model},
+                #{specification},
+                #{description},
+                #{lifeSpan},
+                #{marketValue},
+                #{createdById},
+                #{createdBy},
+                #{createdDate},
+                #{updatedById},
+                #{updatedBy},
+                #{updatedDate}
+            );
+
+    </insert>
+
+    <update id="specificationUpdate">
+        UPDATE sys_data_dict
+        SET category = #{category},
+            te_name = #{teName},
+            item_code = #{itemCode},
+            brand = #{brand},
+            model = #{model},
+            specification = #{specification},
+            description = #{description},
+            lifespan = #{lifeSpan},
+            market_value = #{marketValue},
+            updated_by_id = #{updatedById},
+            updated_by = #{updatedBy},
+            updated_date = #{updatedDate}
+        WHERE id = #{dataDictID};
+    </update>
+
+    <delete id="specificationDelete">
+        DELETE FROM sys_data_dict
+            WHERE id = #{dataDictID};
+    </delete>
+
+
+    <select id="getAttributedList" resultMap="attributedMap">
+        SELECT cat1.id, cat1.name, cat1.code, cat1.parent_id, cat1.instance_id, cat2.name as parent_name, cat3.name as code_name
+        FROM categories cat1
+            left join categories cat2 ON cat2.id = cat1.parent_id
+            left join categories cat3 ON cat3.instance_id = cat1.code and cat3.parent_id = 0
+        where 1=1
+          and cat1.code in (1,2,3,4,5,6,7,8,9,10)
+        <if test="searchName != null ">
+            <bind name="name" value="'%' + searchName + '%'" />
+            and cat1.name like #{name}
+        </if>
+        LIMIT #{start}, #{limit};
+    </select>
+
+    <select id="getAttributedListCount" parameterType="Map" resultType="Integer">
+        SELECT COUNT(0)
+        FROM categories
+        where 1=1
+        and code in (1,2,3,4,5,6,7,8,9,10)
+        <if test="searchName != null ">
+            <bind name="name" value="'%' + searchName + '%'" />
+            and name like #{name}
+        </if>
+    </select>
+
+    <select id="getCodeNames" resultType="Map">
+        SELECT id, instance_id, name
+        FROM categories
+        where 1=1
+          and code = 0
+          and instance_id is not null
+    </select>
+
+    <select id="getData" resultType="Map">
+        SELECT id, code, name
+        FROM categories
+        where 1=1
+    </select>
+
+    <insert id="addForm" useGeneratedKeys="true" keyColumn="id" keyProperty="id" parameterType="Map">
+        insert into categories
+            (
+             name,
+             code,
+             parent_id,
+             instance_id,
+             created_date,
+             created_by,
+             created_id,
+             updated_date,
+             updated_by,
+             updated_id
+            )
+        values
+            (
+             #{name},
+             #{code},
+             #{parentId},
+             #{instanceId},
+             #{createdDate},
+             #{createdBy},
+             #{createdById},
+             #{updatedDate},
+             #{updatedBy},
+             #{updatedById}
+            )
+    </insert>
+
+    <update id="editForm" parameterType="Map">
+        update categories set
+            name = #{name},
+            code = #{code},
+            parent_id = #{parentId},
+            instance_id = #{instanceId},
+            updated_date = #{updatedDate},
+            updated_by = #{updatedBy},
+            updated_id = #{updatedById}
+        where id = #{dataDictID}
+    </update>
+
+
+    <insert id="addAttForm" parameterType="Map">
+        insert into categories(
+            name,
+            code,
+            parent_id,
+            instance_id,
+            created_date,
+            created_by,
+            created_id,
+            updated_date,
+            updated_by,
+            updated_id
+        ) values(
+                    #{name},
+                    #{code},
+                    #{parentid},
+                    #{instanceid},
+                    #{createdDate},
+                    #{createdBy},
+                    #{createdById},
+                    #{updatedDate},
+                    #{updatedBy},
+                    #{updatedById}
+                );
+    </insert>
+
+    <update id="editAttForm" parameterType="Map">
+        update categories set
+                              name = #{updateName},
+                              updated_date = #{updatedDate},
+                              updated_by = #{updatedBy},
+                              updated_id = #{updatedById}
+        where id = #{updateId}
+    </update>
+
+    <select id="showCategoryTree" resultType="Map">
+        select * from
+            (
+                select id, name,  code,  ifnull(parent_id, 0) parent_id from Categories c where code = 1
+                union all
+                select id, name,  code,  ifnull(parent_id, 0) from Categories c where code = 2
+                union all
+                select id, name,  code,  ifnull(parent_id, 0) from Categories c where code = 3
+                union all
+                select id, name,  code,  ifnull(parent_id, 0) from Categories c where code = 5
+                                                                     ) t1
+        order by code, id, parent_id
+        ;
+    </select>
+
+    <select id="getCategoryChild" resultType="Map">
+        select
+            cat.id,
+            cat.code,
+            cat.parent_id,
+            (select name from categories where id = cat.parent_id) parent_name,
+            cat.instance_id,
+            cat.name,
+            cat.created_date
+        from categories cat
+        where code in ('1','2','3','5')
+        order by cat.code, cat.parent_id
+        ;
+    </select>
+
+</mapper>

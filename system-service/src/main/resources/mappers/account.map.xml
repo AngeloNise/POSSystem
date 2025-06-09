@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.systemservice.repository.AccountRepository">
+
+    <select id="showAllAccounts" resultType="Map">
+        SELECT
+            acc.ACCOUNT_ID,
+            acc.ACCOUNT_NAME,
+            acc.FULL_NAME,
+            acc.MOBILE_PHONE_A,
+            acc.SEX,
+            acc.STATUS_,
+            date_format(acc.CREATE_DATE, '%Y-%m-%d') CREATE_DATE_F,
+            acc.NATIONALITY,
+            acc.HOME_ADDRESS,
+            acc.EMPLOYEE_ID,
+            acc.EMAIL1,
+            org.name_ organization,
+            org.id_ orgid,
+            rol.name_ role,
+            rol.role_id,
+            acc.STATE,
+            acc.SOURCE_MENU,
+            acc.TYPE,
+            acc.ORG_TYPE orgtype,
+            org.path_ orgpath,
+            acc.SIGNATURE,
+            acc.POSITION
+        FROM account acc
+                 left join role rol
+                           on rol.role_id = acc.ROLE_ID
+                 left join organization_ledger org
+                           on  org.ID_ = acc.ORGANIZATION_ID;
+    </select>
+
+    <select id="showAllAccountsByOrg" resultType="Map" parameterType="Map">
+        SELECT
+            acc.ACCOUNT_ID,
+            acc.ACCOUNT_NAME,
+            acc.FULL_NAME,
+            acc.MOBILE_PHONE_A,
+            acc.SEX,
+            acc.STATUS_,
+            date_format(acc.CREATE_DATE, '%Y-%m-%d') CREATE_DATE_F,
+            acc.NATIONALITY,
+            acc.HOME_ADDRESS,
+            acc.EMPLOYEE_ID,
+            acc.EMAIL1,
+            org.name_ organization,
+            org.id_ orgid,
+            rol.name_ role,
+            rol.role_id,
+            acc.STATE,
+            acc.SOURCE_MENU,
+            acc.TYPE,
+            acc.ORG_TYPE orgtype,
+            org.path_ orgpath,
+            acc.SIGNATURE,
+            acc.POSITION
+        FROM account acc
+                 left join role rol
+                           on rol.role_id = acc.ROLE_ID
+                 left join organization_ledger org
+                           on  org.ID_ = acc.ORGANIZATION_ID
+        where 1=1
+            <bind name="orgpath" value="ORG_PATH + '%'" />
+            and org.path_ like #{orgpath}
+
+;
+    </select>
+
+    <select id="showAllRoles" resultType="Map">
+        SELECT
+            ROLE_ID,
+            NAME_,
+            POWER CODE,
+            DESCRIBES DESCRIPTION,
+            STATE,
+            date_format(CREATE_DATE, '%Y-%m-%d') CREATE_DATE_F
+
+        FROM role
+        where type_ is null
+    </select>
+
+    <select id="showOrganizationTree" resultType="Map">
+        SELECT
+            id_ ORGANIZATION_ID,name_ FULL_NAME, parent_id_ PARENT_ID, type_, path_, cost_center_, wbs_
+        FROM
+            (SELECT
+                 *
+             FROM
+                 organization_ledger
+             ORDER BY parent_id_ , id_) org_sorted,
+            (SELECT @pv:='0') init
+        WHERE
+            FIND_IN_SET(parent_id_, @pv)
+          AND LENGTH(@pv:=CONCAT(@pv, ',', id_));
+    </select>
+
+    <delete id="DeleteRoleOrgByAccountId" parameterType="Map">
+        delete from role_org_relation WHERE user_id_ = #{ACCOUNT_ID}
+    </delete>
+
+    <update id="updateAccountMainRoleOrgSetup" parameterType="Map">
+        update account set
+                           ORGANIZATION_ID = #{orgid},
+                           ORG_TYPE = #{orgtype},
+                           ROLE_ID = #{roleid},
+                           REGION_ID = #{regionid},
+                           AREA_ID = #{areaid},
+                           COMPANY_ID = #{companyId}
+        where ACCOUNT_ID = #{userid}
+    </update>
+
+    <update id="UpdateAccountByUserId" parameterType="Map">
+        UPDATE account SET
+        FULL_NAME = #{FULL_NAME},
+        ACCOUNT_NAME = #{ACCOUNT_NAME},
+        MOBILE_PHONE_A = #{MOBILE_PHONE_A},
+        NATIONALITY = #{NATIONALITY},
+        SEX = #{SEX},
+        HOME_ADDRESS = #{HOME_ADDRESS},
+        EMPLOYEE_ID = #{EMPLOYEE_ID},
+        EMAIL1 = #{EMAIL1},
+        STATUS_ = #{STATUS_},
+        TYPE = #{TYPE},
+        SIGNATURE = #{SIGNATURE},
+        POSITION = #{POSITION},
+        UPDATED_BY = #{UPDATED_BY},
+        LAST_UPDATED = DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+        WHERE ACCOUNT_ID = #{ACCOUNT_ID}
+    </update>
+
+
+    <update id="UpdateAccountStateById" parameterType="Map">
+        update account set
+            STATE = #{STATE}
+        where ACCOUNT_ID = #{ACCOUNT_ID}
+    </update>
+
+    <update id="SwitchSourceMenubyId" parameterType="Map">
+        update account
+        set SOURCE_MENU = #{SourceMenu}
+        where ACCOUNT_ID = #{UserId}
+    </update>
+
+    <update id="updateNewUserPassword" parameterType="Map">
+        Update account
+        set password_ = #{password}
+        where account_id = #{account_id}
+    </update>
+
+    <select id="GetRoleOrgListByUserid" parameterType="String" resultType="Map">
+        select
+            concat( rol.NAME_, '-',orl.name_) name,
+            concat(ror.role_id_,':',ror.org_id_) value
+        from role_org_relation ror
+            inner join role rol on rol.ROLE_ID = ror.role_id_
+            inner join organization_ledger orl on orl.id_ = ror.org_id_
+        where user_id_ = #{userid}
+        ;
+    </select>
+
+    <insert id="InsertNewUserAccount" parameterType="com.microservice.systemservice.models.UserAccount" useGeneratedKeys="true" keyProperty="NEW_ID">
+        insert into account (
+            ACCOUNT_NAME,
+            FULL_NAME,
+            HOME_ADDRESS,
+            MOBILE_PHONE_A,
+            EMPLOYEE_ID,
+            EMAIL1,
+            CREATE_DATE,
+            PASSWORD_,
+            SEX,
+            NATIONALITY,
+            ORGANIZATION_ID,
+            ROLE_ID,
+            STATE,
+            STATUS_,
+            SOURCE_MENU,
+            TYPE
+        )
+        values(
+            #{accountName},
+            #{fullName},
+            #{homeAddress},
+            #{mobileNumber},
+            #{employeeId},
+            #{email},
+            now(),
+            '$2a$12$eeHq60fAQtqW2dnnHxLGTOHi2sti2kUKdMn0dEPSnsc.9wHeklBMi',
+            #{genderId},
+            #{nationalityId},
+            #{organizationId},
+            #{roleId},
+            '1',
+            '1',
+            #{sourceMenu},
+            #{userType}
+              );
+    </insert>
+
+    <select id="getOrganizatioById" parameterType="String" resultType="Map">
+        select * from organization_ledger where id_ = #{organizationId};
+    </select>
+
+    <insert id="InsertNewRoleOrgByAccount" parameterType="Map">
+        insert into role_org_relation(user_id_, role_id_, org_id_)
+        values (#{userid}, #{roleid}, #{orgid});
+    </insert>
+
+    <insert id="AddNewAccount" parameterType="Map" useGeneratedKeys="true" keyProperty="ACCOUNT_ID">
+        INSERT INTO account
+        (FULL_NAME,
+         ACCOUNT_NAME,
+         CREATE_DATE,
+         MOBILE_PHONE_A,
+         NATIONALITY,
+         SEX,
+         HOME_ADDRESS,
+         EMPLOYEE_ID,
+         EMAIL1,
+         STATUS_,
+         STATE,
+         ORGANIZATION_ID,
+         COMPANY_ID,
+         PASSWORD_,
+         TYPE,
+         ORG_TYPE,
+         AREA_ID,
+         REGION_ID,
+         ROLE_ID,
+         SIGNATURE,
+         POSITION,
+         CREATED_BY
+        )
+        VALUES
+            (#{FULL_NAME},
+             #{ACCOUNT_NAME},
+             now(),
+             #{MOBILE_PHONE_A},
+             #{NATIONALITY},
+             #{SEX},
+             #{HOME_ADDRESS},
+             #{EMPLOYEE_ID},
+             #{EMAIL1},
+             #{STATUS_},
+             '1',
+             #{relOrgData.orgid},
+             #{relOrgData.companyId},
+             '$2a$12$eeHq60fAQtqW2dnnHxLGTOHi2sti2kUKdMn0dEPSnsc.9wHeklBMi',
+             #{TYPE},
+             #{relOrgData.orgtype},
+             #{relOrgData.areaid},
+             #{relOrgData.regionid},
+             #{relOrgData.roleid},
+             #{SIGNATURE},
+             #{POSITION},
+             #{CREATED_BY}
+            )
+    </insert>
+
+    <update id="updateAccountSignature" parameterType="Map">
+        UPDATE account SET SIGNATURE = #{SIGNATURE} WHERE ACCOUNT_ID = #{ACCOUNT_ID}
+    </update>
+
+    <select id="getAllAccountNames" resultType="String">
+        select group_concat(account_name) from account;
+    </select>
+
+    <select id="getWidgetPermissionAcc" parameterType="Map" resultType="Map">
+        select
+        concat('{',
+        group_concat(
+        concat(wp.widget_code, 'x',wp.resource_id, ':',
+        JSON_OBJECT(
+        'display', wp.display,
+        'type', wp.type,
+        'label', wp.label
+        )
+        )
+        ),
+        '}') json_widget
+        from widget_permission wp
+
+        <if test="sourcemenu == 'USER'">
+            where user_id = #{userid} and resource_id = #{resourceid} and company_id = #{companyId}
+            group by wp.user_id and wp.resource_id
+        </if>
+
+        <if test="sourcemenu == 'ROLE'">
+            where role_id = #{roleid} and resource_id = #{resourceid} and company_id = #{companyId}
+            group by wp.role_id and wp.resource_id
+        </if>
+
+        ;
+    </select>
+
+</mapper>

@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.systemservice.repository.RoleRepository">
+
+    <select id="GetRolePowerUserID" parameterType="String" resultType="String">
+        select ROLE_ID from role where POWER = #{power}
+    </select>
+
+    <select id="getUserRole" parameterType="String" resultType="String">
+        SELECT ROLE_ID FROM account WHERE ACCOUNT_ID = #{accountId}
+    </select>
+
+    <delete id="DeleteResourceByUserId" parameterType="String">
+        DELETE FROM role_resource WHERE ROLE_ID = #{roleId} and USER_ID = #{userId}
+    </delete>
+
+    <delete id="DeleteResourceByUserIdV2" parameterType="String">
+        DELETE FROM role_resource WHERE ROLE_ID = #{roleId} and USER_ID = #{userId} and COMPANY_ID = #{companyId}
+    </delete>
+
+    <insert id="InsertNewResourceByUser" parameterType="Map" useGeneratedKeys="true" keyProperty="NEW_RESOURCE_ID">
+        INSERT INTO role_resource
+        (USE_TYPE,
+         RESOURCES_ID,
+         ROLE_ID,
+         USER_ID,
+         COMPANY_ID
+        )
+        VALUES
+            ('2',
+             #{resourceId},
+             #{roleId},
+             #{userId},
+             #{companyId}
+            )
+    </insert>
+
+    <select id="showAllResources" resultType="Map">
+        select
+            RESOURCES_ID,
+            PARENT_ID,
+            NAME_,
+            CODE_,
+            SORT,
+            TYPE_,
+            VALUE_,
+            date_format(CREATE_DATE, '%Y-%m-%d') CREATE_DATE_F,
+            ICON_URL,
+            STATUS_
+
+        FROM resources
+        where TYPE_ != 3 AND CODE_ is not null
+         and STATUS_ = 1
+        order by code_
+    </select>
+
+    <insert id="saveNewResources" parameterType="Map" useGeneratedKeys="true" keyProperty="NEW_ROLE_ID">
+        INSERT INTO resources
+        (NAME_,
+         VALUE_,
+         PARENT_ID,
+         STATUS_,
+         CREATE_DATE,
+         TYPE_,
+         CODE_,
+         ICON_URL,
+         SORT
+        )
+        VALUES
+            (#{NAME_},
+             #{LINK},
+             #{PARENTID},
+             '1',
+             now(),
+             #{TYPE_},
+             #{CODE_},
+             #{ICON_URL},
+             #{SORT}
+            )
+    </insert>
+
+    <delete id="DeleteAcctInRole" parameterType="Map">
+        DELETE FROM role_account WHERE ACCOUNT_ID = #{ACCOUNT_ID}
+    </delete>
+
+    <insert id="saveNewRole" parameterType="Map" useGeneratedKeys="true" keyProperty="NEW_ROLE_ID">
+        INSERT INTO role
+        (NAME_,
+         DESCRIBES,
+         CREATE_DATE,
+         STATE
+        )
+        VALUES
+            (#{NAME_},
+             #{DESCRIPTION},
+             now(),
+             '1'
+            )
+    </insert>
+
+    <update id="updateRoleById" parameterType="Map">
+        update role set
+                        NAME_ = #{NAME_},
+                        DESCRIBES = #{DESCRIPTION}
+        where ROLE_ID = #{ROLE_ID}
+    </update>
+
+    <select id="showAllRoles" resultType="Map">
+        SELECT
+            ROLE_ID,
+            NAME_,
+            POWER CODE,
+            DESCRIBES DESCRIPTION,
+            STATE,
+            date_format(CREATE_DATE, '%Y-%m-%d') CREATE_DATE_F
+
+        FROM role
+        where type_ is null
+    </select>
+
+    <select id="getResourceRoleAccount" resultType="Map">
+        SELECT
+            rr.*, rol.NAME_ ROLE, res.NAME_ RESOURCES
+
+        FROM role_resource rr
+
+                 inner join role rol
+                            on rol.ROLE_ID = rr.ROLE_ID
+                 inner join resources res
+                            on res.RESOURCES_ID = rr.RESOURCES_ID
+        where rol.STATE = 1 and res.TYPE_ != 3
+    </select>
+
+    <select id="getResourceRoleAccountV2" resultType="Map" parameterType="String">
+        SELECT
+            rr.*, rol.NAME_ ROLE, res.NAME_ RESOURCES
+
+        FROM role_resource rr
+
+                 inner join role rol
+                            on rol.ROLE_ID = rr.ROLE_ID
+                 inner join resources res
+                            on res.RESOURCES_ID = rr.RESOURCES_ID
+        where rol.STATE = 1 and res.TYPE_ != 3
+        and rr.COMPANY_ID = #{companyId}
+    </select>
+
+    <select id="showAllAccounts" resultType="Map">
+        SELECT
+            acc.ACCOUNT_ID,
+            acc.ACCOUNT_NAME,
+            acc.FULL_NAME,
+            acc.MOBILE_PHONE_A,
+            acc.SEX,
+            acc.STATUS_,
+            date_format(acc.CREATE_DATE, '%Y-%m-%d') CREATE_DATE_F,
+            acc.NATIONALITY,
+            acc.HOME_ADDRESS,
+            acc.EMPLOYEE_ID,
+            acc.EMAIL1,
+            org.name_ organization,
+            org.id_ orgid,
+            rol.name_ role,
+            rol.role_id,
+            acc.STATE,
+            acc.SOURCE_MENU,
+            acc.TYPE,
+            acc.ORG_TYPE orgtype,
+            org.path_ orgpath,
+            acc.SIGNATURE
+        FROM account acc
+                 left join role rol
+                           on rol.role_id = acc.ROLE_ID
+                 left join organization_ledger org
+                           on  org.ID_ = acc.ORGANIZATION_ID;
+    </select>
+
+    <select id="showAllAccountsV2" resultType="Map" parameterType="String">
+        SELECT
+            acc.ACCOUNT_ID,
+            acc.ACCOUNT_NAME,
+            acc.FULL_NAME,
+            acc.MOBILE_PHONE_A,
+            acc.SEX,
+            acc.STATUS_,
+            date_format(acc.CREATE_DATE, '%Y-%m-%d') CREATE_DATE_F,
+            acc.NATIONALITY,
+            acc.HOME_ADDRESS,
+            acc.EMPLOYEE_ID,
+            acc.EMAIL1,
+            org.name_ organization,
+            org.id_ orgid,
+            rol.name_ role,
+            rol.role_id,
+            acc.STATE,
+            acc.SOURCE_MENU,
+            acc.TYPE,
+            acc.ORG_TYPE orgtype,
+            org.path_ orgpath,
+            acc.SIGNATURE
+        FROM account acc
+                 left join role rol
+                           on rol.role_id = acc.ROLE_ID
+                 left join organization_ledger org
+                           on  org.ID_ = acc.ORGANIZATION_ID
+        WHERE acc.COMPANY_ID = #{companyId};
+    </select>
+
+    <select id="getUserWidgetPermissionData" resultType="Map">
+        SELECT
+            json_object(
+                    'userid', wp.user_id,
+                    'roleid', wp.role_id,
+                    'resourceid', wp.resource_id,
+                    'objectArr', json_array(
+                            group_concat(
+                                    json_object(
+                                            'display', wp.display,
+                                            'type', wp.type,
+                                            'widget_code', wp.widget_code,
+                                            'label', wp.label
+                                        )
+                                )
+                        )
+                ) json_permission
+        FROM widget_permission wp
+        where (user_id != 0 and user_id is not null)
+        group by wp.resource_id, wp.user_id
+        ;
+    </select>
+
+    <select id="getUserWidgetPermissionDataV2" resultType="Map" parameterType="String">
+        SELECT
+            json_object(
+                    'userid', wp.user_id,
+                    'roleid', wp.role_id,
+                    'resourceid', wp.resource_id,
+                    'objectArr', json_array(
+                            group_concat(
+                                    json_object(
+                                            'display', wp.display,
+                                            'type', wp.type,
+                                            'widget_code', wp.widget_code,
+                                            'label', wp.label
+                                        )
+                                )
+                        )
+                ) json_permission
+        FROM widget_permission wp
+        where (user_id != 0 and user_id is not null) and company_id = #{companyId}
+        group by wp.resource_id, wp.user_id
+        ;
+    </select>
+
+    <select id="getRoleWidgetPermissionData" resultType="Map">
+        SELECT
+            json_object(
+                    'userid', wp.user_id,
+                    'roleid', wp.role_id,
+                    'resourceid', wp.resource_id,
+                    'objectArr', json_array(
+                            group_concat(
+                                    json_object(
+                                            'display', wp.display,
+                                            'type', wp.type,
+                                            'widget_code', wp.widget_code,
+                                            'label', wp.label
+                                        )
+                                )
+                        )
+                ) json_permission
+        FROM widget_permission wp
+        where (role_id != 0 and role_id is not null)
+        group by wp.resource_id, wp.role_id
+        ;
+    </select>
+
+    <select id="getRoleWidgetPermissionDataV2" resultType="Map" parameterType="String">
+        SELECT
+            json_object(
+                    'userid', wp.user_id,
+                    'roleid', wp.role_id,
+                    'resourceid', wp.resource_id,
+                    'objectArr', json_array(
+                            group_concat(
+                                    json_object(
+                                            'display', wp.display,
+                                            'type', wp.type,
+                                            'widget_code', wp.widget_code,
+                                            'label', wp.label
+                                        )
+                                )
+                        )
+                ) json_permission
+        FROM widget_permission wp
+        where (role_id != 0 and role_id is not null) and company_id = #{companyId}
+        group by wp.resource_id, wp.role_id
+        ;
+    </select>
+
+    <delete id="DeleteResourceByRoleId" parameterType="Map">
+        DELETE FROM role_resource WHERE ROLE_ID = #{roleId} AND COMPANY_ID = #{companyId}
+    </delete>
+
+    <insert id="InsertNewResourceByRole" parameterType="Map" useGeneratedKeys="true" keyProperty="NEW_RESOURCE_ID">
+        INSERT INTO role_resource
+        (USE_TYPE,
+         RESOURCES_ID,
+         ROLE_ID,
+         COMPANY_ID
+        )
+        VALUES
+            ('1',
+             #{resourceId},
+             #{roleId},
+             #{companyId}
+            )
+    </insert>
+
+    <update id="UpdateRoleStateById" parameterType="Map">
+        update role set
+            STATE = #{STATE}
+        where ROLE_ID = #{ROLE_ID}
+    </update>
+
+    <insert id="SaveNewAcctInRole" parameterType="Map" useGeneratedKeys="true" keyProperty="NEW_ROLE_ID">
+        INSERT INTO role_account
+        (ROLE_ID,
+         ACCOUNT_ID
+        )
+        VALUES
+            (#{roleID},
+             #{ACCOUNT_ID}
+            )
+    </insert>
+
+    <update id="updateResourceByRow" parameterType="Map">
+        update resources set
+                             NAME_ = #{NAME_},
+                             VALUE_ =#{VALUE_},
+                             ICON_URL = #{ICON_URL},
+                             STATUS_ = #{STATUS_}
+        where RESOURCES_ID = #{RESOURCES_ID}
+    </update>
+
+    <delete id="truncateFirstBeforeInsert" parameterType="Map">
+        delete from widget_permission
+
+        <if test="action_type == 'permUser'">
+            where user_id = #{userid} and resource_id = #{resourceid} and company_id = #{companyId}
+        </if>
+
+        <if test="action_type == 'permRole'">
+            where role_id = #{roleid} and resource_id = #{resourceid} and company_id = #{companyId}
+        </if>
+
+    </delete>
+
+    <insert id="AddNewWidgePermByUser" parameterType="Map">
+        insert into widget_permission(
+            user_id,
+            role_id,
+            company_id,
+            resource_id,
+            display,
+            type,
+            widget_code,
+            label
+        )values (
+                    #{userid},
+                    #{roleid},
+                    #{companyId},
+                    #{resourceid},
+                    #{display},
+                    #{type},
+                    #{widge_code},
+                    #{label}
+                );
+    </insert>
+
+    <select id="getButtonPermissionLegend" resultType="Map">
+        select
+                (select group_concat(code) from widget_permission_legend) code,
+                (select group_concat(label) from widget_permission_legend) label
+        ;
+    </select>
+
+    <select id="getWidgeLegend" resultType="Map">
+        select JSON_OBJECT('name', label, 'value', code) widge_legend
+        from widget_permission_legend;
+    </select>
+
+</mapper>

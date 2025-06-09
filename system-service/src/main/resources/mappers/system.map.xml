@@ -1,0 +1,547 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.systemservice.repository.SystemRepository">
+    <resultMap id="orgUserRelationMap" type="com.microservice.systemservice.dto.OrgUserRelationResponse">
+        <result property="userId" column="userid"/>
+        <result property="projectId" column="projectid"/>
+        <result property="areaId" column="areaid"/>
+    </resultMap>
+    <select id="findByUsername" resultType="Map" parameterType="String">
+
+        select
+			r.NAME_,
+            s.RESOURCES_ID,s.PARENT_ID,
+            s.NAME_ PAGES,
+            s.CODE_,s.VALUE_,s.GRADE,s.SORT,s.TYPE_,s.ICON_URL,s.STATE,s.STATUS_,
+            o.USER_ID
+        from
+           role r , ROLE_RESOURCE o, RESOURCES s
+        where s.STATUS_=1
+           and s.type_ != 3
+          and r.ROLE_ID=o.ROLE_ID
+          and o.RESOURCES_ID=s.RESOURCES_ID
+          and o.USE_TYPE = 2
+          and o.USER_ID = (select ACCOUNT_ID from account where ACCOUNT_NAME = #{username})
+        order by s.CODE_
+    </select>
+
+    <select id="GetSourceMenuByUsername" parameterType="String" resultType="String">
+        select SOURCE_MENU from account
+            where ACCOUNT_NAME = #{username}
+    </select>
+
+    <update id="SwitchSourceMenubyId" parameterType="Map">
+        update account
+        set SOURCE_MENU = #{SourceMenu}
+        where ACCOUNT_ID = #{UserId}
+    </update>
+
+    <update id="updateOrg" parameterType="Map">
+        update organization_ set
+            FULL_NAME = #{FULL_NAME},
+            PARENT_ID = #{PARENT_ID},
+            REGION = #{REGION},
+            REMARK = #{REMARK},
+            GRADE = #{GRADE_ID}
+
+      where ORGANIZATION_ID = #{ORGANIZATION_ID}
+    </update>
+
+    <insert id="saveNewOrg" parameterType="Map" useGeneratedKeys="true" keyColumn="ORGANIZATION_ID" keyProperty="organizationId">
+        INSERT INTO organization_
+            (FULL_NAME,
+            PARENT_ID,
+            ADDRESS,
+            REMARK,
+            CREATE_DATE,
+            GRADE
+			)
+        VALUES
+            (#{FULL_NAME},
+            #{PARENT_ID},
+              #{ADDRESS},
+              #{REMARK},
+              now(),
+             #{GRADE_ID}
+			)
+	</insert>
+
+    <select id="findByRole" resultType="Map" parameterType="String">
+
+        select
+			r.NAME_,
+            s.RESOURCES_ID,s.PARENT_ID,
+            s.NAME_ PAGES,
+            s.CODE_,s.VALUE_,s.GRADE,s.SORT,s.TYPE_,s.ICON_URL,s.STATE,s.STATUS_
+        from
+           role r , ROLE_RESOURCE o, RESOURCES s
+        where s.STATUS_=1
+           and s.type_ != 3
+          and r.ROLE_ID=o.ROLE_ID
+          and o.RESOURCES_ID=s.RESOURCES_ID
+           and r.NAME_ = #{role}
+        order by s.CODE_
+
+    </select>
+
+    <select id="findByRoleV2" resultType="Map" parameterType="Map">
+        select
+			r.NAME_,
+            s.RESOURCES_ID,s.PARENT_ID,
+            s.NAME_ PAGES,
+            s.CODE_,s.VALUE_,s.GRADE,s.SORT,s.TYPE_,s.ICON_URL,s.STATE,s.STATUS_
+        from
+           role r , ROLE_RESOURCE o, RESOURCES s
+        where s.STATUS_=1
+            and s.type_ != 3
+            and r.ROLE_ID=o.ROLE_ID
+            and o.RESOURCES_ID=s.RESOURCES_ID
+            and r.NAME_ = #{role}
+            and o.COMPANY_ID = #{companyId}
+        order by s.CODE_
+    </select>
+
+    <select id="showAllAccounts" resultType="Map">
+        SELECT
+            acc.ACCOUNT_ID,
+            acc.ACCOUNT_NAME,
+            acc.FULL_NAME,
+            acc.MOBILE_PHONE_A,
+            acc.SEX,
+            acc.STATUS_,
+            date_format(acc.CREATE_DATE, '%Y-%m-%d') CREATE_DATE_F,
+            acc.NATIONALITY,
+            acc.HOME_ADDRESS,
+            acc.EMPLOYEE_ID,
+            acc.EMAIL1,
+            org.name_ organization,
+            org.id_ orgid,
+            rol.name_ role,
+            rol.role_id,
+            acc.STATE,
+            acc.SOURCE_MENU,
+            acc.TYPE,
+            acc.ORG_TYPE orgtype,
+            org.path_ orgpath,
+            acc.SIGNATURE
+        FROM account acc
+                 left join role rol
+                           on rol.role_id = acc.ROLE_ID
+                 left join organization_ledger org
+                           on  org.ID_ = acc.ORGANIZATION_ID;
+    </select>
+
+    <select id="showAllAccountsV2" resultType="Map" parameterType="String">
+        SELECT
+            acc.ACCOUNT_ID,
+            acc.ACCOUNT_NAME,
+            acc.FULL_NAME,
+            acc.MOBILE_PHONE_A,
+            acc.SEX,
+            acc.STATUS_,
+            date_format(acc.CREATE_DATE, '%Y-%m-%d') CREATE_DATE_F,
+            acc.NATIONALITY,
+            acc.HOME_ADDRESS,
+            acc.EMPLOYEE_ID,
+            acc.EMAIL1,
+            org.name_ organization,
+            org.id_ orgid,
+            rol.name_ role,
+            rol.role_id,
+            acc.STATE,
+            acc.SOURCE_MENU,
+            acc.TYPE,
+            acc.ORG_TYPE orgtype,
+            org.path_ orgpath,
+            acc.SIGNATURE
+        FROM account acc
+        left join role rol on rol.role_id = acc.ROLE_ID
+        left join organization_ledger org on  org.ID_ = acc.ORGANIZATION_ID
+        <bind name="companyLike" value="companyId + '.%'"/>
+        WHERE org.id_ = #{companyId} OR org.path_ LIKE #{companyLike}
+        ;
+    </select>
+
+    <select id="showOrganizationTree" resultType="Map">
+        SELECT
+            id_ ORGANIZATION_ID,name_ FULL_NAME, parent_id_ PARENT_ID, type_, path_, cost_center_, wbs_
+        FROM
+            (SELECT
+                 *
+             FROM
+                 organization_ledger
+             ORDER BY parent_id_ , id_) org_sorted,
+            (SELECT @pv:='0') init
+        WHERE
+            FIND_IN_SET(parent_id_, @pv)
+          AND LENGTH(@pv:=CONCAT(@pv, ',', id_));
+    </select>
+
+    <select id="showOrganizationTreeV2" resultType="Map" parameterType="String">
+        SELECT
+            id_ ORGANIZATION_ID,name_ FULL_NAME, parent_id_ PARENT_ID, type_, path_, cost_center_, wbs_
+        FROM
+            (SELECT
+                 *
+             FROM
+                 organization_ledger
+            <bind name="companyLike" value="companyId + '.%'"/>
+            WHERE  id_ = #{companyId} OR path_ LIKE #{companyLike}
+             ORDER BY parent_id_ , id_) org_sorted,
+            (SELECT @pv:='0') init
+        WHERE
+            FIND_IN_SET(parent_id_, @pv)
+            AND LENGTH(@pv:=CONCAT(@pv, ',', id_));
+    </select>
+
+    <!--OLD CODES-->
+    <!--<select id="showOrganizationTree" resultType="Map">
+        SELECT
+				ORGANIZATION_ID, FULL_NAME, PARENT_ID, ADDRESS, REMARK, REGION
+			FROM
+				(SELECT
+					*
+				FROM
+					organization_
+				ORDER BY parent_id , organization_id) org_sorted,
+				(SELECT @pv:='0') init
+			WHERE
+				FIND_IN_SET(parent_id, @pv)
+					AND LENGTH(@pv:=CONCAT(@pv, ',', organization_id))
+    </select>-->
+
+    <select id="showOrgTreeWithParent" resultType="Map">
+        SELECT
+            org_sorted.ORGANIZATION_ID, org_sorted.FULL_NAME
+        FROM
+        (SELECT
+        *
+        FROM
+        organization_ org
+        ORDER BY parent_id , organization_id) org_sorted,
+        (SELECT @pv:='0') init
+        WHERE
+        FIND_IN_SET(parent_id, @pv)
+        AND LENGTH(@pv:=CONCAT(@pv, ',', organization_id))
+        <![CDATA[AND org_sorted.PARENT_ID < 2 ]]>
+        ;
+    </select>
+
+    <select id="showOrgTreeWithParentV2" resultType="Map">
+        SELECT
+            org_sorted.ORGANIZATION_ID, org_sorted.FULL_NAME
+        FROM
+        (SELECT
+        *
+        FROM
+        organization_ org
+        ORDER BY parent_id , organization_id) org_sorted,
+        (SELECT @pv:='0') init
+        WHERE
+        FIND_IN_SET(parent_id, @pv)
+        AND LENGTH(@pv:=CONCAT(@pv, ',', organization_id))
+        <![CDATA[AND org_sorted.PARENT_ID < 2 ]]>
+        ;
+    </select>
+
+    <update id="UpdateAccount" parameterType="Map">
+      update account set
+        FULL_NAME = #{FULL_NAME},
+        ACCOUNT_NAME = #{ACCOUNT_NAME},
+        MOBILE_PHONE_A = #{MOBILE_PHONE_A},
+        NATIONALITY = #{NATIONALITY},
+        SEX = #{SEX},
+        HOME_ADDRESS = #{HOME_ADDRESS},
+        EMPLOYEE_ID = #{EMPLOYEE_ID},
+        EMAIL1 = #{EMAIL1},
+        STATUS_ = #{STATUS_},
+        TYPE = #{TYPE_},
+        SIGNATURE = #{SIGNATURE}
+      where ACCOUNT_ID = #{ACCOUNT_ID}
+    </update>
+
+    <!--old-->
+    <delete id="DeleteRoleByAccountId" parameterType="Map">
+		DELETE FROM role_account WHERE account_id = #{ACCOUNT_ID}
+	</delete>
+
+    <delete id="DeleteRoleOrgByAccountId" parameterType="Map">
+        delete from role_org_relation WHERE user_id_ = #{ACCOUNT_ID}
+    </delete>
+
+    <!--old-->
+    <insert id="InserNewRoleByAccountId" parameterType="Map" >
+        INSERT INTO role_account
+            (ROLE_ID,
+			ACCOUNT_ID)
+        VALUES
+            (#{role_id},
+			#{ACCOUNT_ID})
+	</insert>
+
+    <insert id="InsertNewRoleOrgByAccount" parameterType="Map">
+        insert into role_org_relation(user_id_, role_id_, org_id_)
+        values (#{userid}, #{roleid}, #{orgid});
+    </insert>
+
+    <!--old-->
+    <update id="UpdateAccountOrgById" parameterType="Map">
+        update account set
+            ORGANIZATION_ID = #{orgid}
+        where ACCOUNT_ID = #{ACCOUNT_ID}
+    </update>
+
+
+    <update id="updateAccountMainRoleOrgSetup" parameterType="Map">
+        update account set
+            ORGANIZATION_ID = #{orgid},
+            ORG_TYPE = #{orgtype},
+            PROJECT_ID = #{projectid},
+            REGION_ID = #{regionid},
+            ROLE_ID = #{roleid}
+        where ACCOUNT_ID = #{userid}
+    </update>
+
+    <!--old code-->
+    <!--<insert id="AddNewAccount" parameterType="Map" useGeneratedKeys="true" keyProperty="ACCOUNT_ID">
+        INSERT INTO account
+            (FULL_NAME,
+			ACCOUNT_NAME,
+			CREATE_DATE,
+			MOBILE_PHONE_A,
+			NATIONALITY,
+            SEX,
+            HOME_ADDRESS,
+            EMPLOYEE_ID,
+            EMAIL1,
+            STATUS_,
+            STATE,
+            ORGANIZATION_ID,
+            PASSWORD_,
+            TYPE
+			)
+        VALUES
+            (#{FULL_NAME},
+			#{ACCOUNT_NAME},
+			now(),
+			#{MOBILE_PHONE_A},
+			#{NATIONALITY},
+			#{SEX},
+			#{HOME_ADDRESS},
+			#{EMPLOYEE_ID},
+			#{EMAIL1},
+			#{STATUS_},
+			'1',
+			#{orgid},
+			'$2a$12$xytwMdrQqaZjzbDFkBwT8ebTOCyPI1.N5X2vz9mEVc9PmAT.HxXjW',
+             #{TYPE_}
+			)
+	</insert>-->
+
+    <insert id="AddNewAccount" parameterType="Map" useGeneratedKeys="true" keyProperty="ACCOUNT_ID">
+        INSERT INTO account
+            (FULL_NAME,
+			ACCOUNT_NAME,
+			CREATE_DATE,
+			MOBILE_PHONE_A,
+			NATIONALITY,
+            SEX,
+            HOME_ADDRESS,
+            EMPLOYEE_ID,
+            EMAIL1,
+            STATUS_,
+            STATE,
+            ORGANIZATION_ID,
+            PASSWORD_,
+            TYPE,
+            ORG_TYPE,
+             PROJECT_ID,
+             REGION_ID,
+             ROLE_ID,
+            SIGNATURE
+			)
+        VALUES
+            (#{FULL_NAME},
+			#{ACCOUNT_NAME},
+			now(),
+			#{MOBILE_PHONE_A},
+			#{NATIONALITY},
+			#{SEX},
+			#{HOME_ADDRESS},
+			#{EMPLOYEE_ID},
+			#{EMAIL1},
+			#{STATUS_},
+			'1',
+			#{relOrgData.orgid},
+			'$2a$12$eeHq60fAQtqW2dnnHxLGTOHi2sti2kUKdMn0dEPSnsc.9wHeklBMi',
+             #{TYPE},
+             #{relOrgData.orgtype},
+             #{relOrgData.projectid},
+             #{relOrgData.regionid},
+             #{relOrgData.roleid},
+            #{SIGNATURE}
+			)
+	</insert>
+
+<update id="UpdateAccountByUserId" parameterType="Map">
+    update account set
+        FULL_NAME = #{FULL_NAME},
+        ACCOUNT_NAME = #{ACCOUNT_NAME},
+        MOBILE_PHONE_A = #{MOBILE_PHONE_A},
+        NATIONALITY = #{NATIONALITY},
+        SEX = #{SEX},
+        HOME_ADDRESS = #{HOME_ADDRESS},
+        EMPLOYEE_ID = #{EMPLOYEE_ID},
+        EMAIL1 = #{EMAIL1},
+        STATUS_ = #{STATUS_},
+        TYPE = #{TYPE},
+        SIGNATURE = #{SIGNATURE}
+    where ACCOUNT_ID = #{ACCOUNT_ID}
+</update>
+
+    <update id="UpdateAccountStateById" parameterType="Map">
+        update account set
+                STATE = #{STATE}
+        where ACCOUNT_ID = #{ACCOUNT_ID}
+    </update>
+
+    <select id="getAccountAccessAreas" parameterType="String" resultType="Map">
+        SELECT rls.area, fsu.fhid
+            FROM fhuser fsu
+            LEFT JOIN roles rls ON rls.fhid = fsu.fhid
+        WHERE fsu.username = #{username}
+    </select>
+
+    <update id="updateAccountSignature" parameterType="Map">
+        UPDATE account SET SIGNATURE = #{SIGNATURE} WHERE ACCOUNT_ID = #{ACCOUNT_ID}
+    </update>
+
+    <select id="getSapList" resultType="Map">
+        SELECT sp.Id, sp.IssueDate FROM sap sp where isnull(IssueDateNew)
+         WHERE Id in ('133647', '133649')
+    </select>
+
+    <select id="getRentalList" resultType="Map">
+        Select Id, DateDelivered from rental_keeperhistory where isnull(DateDeliveredNew)
+    </select>
+
+    <select id="getKeeperList" resultType="Map">
+        SELECT sp.Id, sp.IssueDate FROM keeperhistory sp where isnull(IssueDateNew)
+    </select>
+
+    <update id="updateRentalHistoryDate" parameterType="Map">
+        UPDATE rental_keeperhistory
+        SET DateDeliveredNew = #{DateDelivered}
+        WHERE Id = #{Id}
+    </update>
+
+    <update id="updateSapIssueDate" parameterType="Map">
+        UPDATE sap
+        SET IssueDateNew = #{issueDate}
+        WHERE Id = #{Id}
+    </update>
+
+    <update id="updateKeeperIssueDate" parameterType="Map">
+        UPDATE keeperhistory
+        SET IssueDateNew = #{issueDate}
+        WHERE Id = #{Id}
+    </update>
+
+    <select id="getTEList" resultType="Map">
+        SELECT eq.Id, eq.DatePurchase FROM equipments EQ
+        WHERE DatePurchase not in ("－","_") and isnull(DatePurchaseNew)
+#         WHERE Id in ('133647', '133649')
+    </select>
+
+    <select id="getOrgUserRelation" resultMap="orgUserRelationMap" parameterType="String">
+        SELECT userid,projectid,areaid
+        FROM user_org_relation where userid = #{accountId}
+    </select>
+
+    <update id="updateTePurchaseDate" parameterType="Map">
+        UPDATE equipments
+        SET DatePurchaseNew = #{DatePurchase}
+        WHERE Id = #{Id}
+    </update>
+
+    <update id="updateNewUserPassword" parameterType="Map">
+        Update account
+        set password_ = #{password}
+        where account_id = #{account_id}
+    </update>
+
+    <select id="GetRoleOrgListByUserid" parameterType="String" resultType="Map">
+        select
+            concat( rol.NAME_, '-',orl.name_) name,
+            concat(ror.role_id_,':',ror.org_id_) value
+        from role_org_relation ror
+            inner join role rol on rol.ROLE_ID = ror.role_id_
+            inner join organization_ledger orl on orl.id_ = ror.org_id_
+        where user_id_ = #{userid}
+        ;
+    </select>
+
+    <update id="SwitchAccountRoleOrg" parameterType="Map">
+        Update account
+        set ROLE_ID = #{roleid},
+            COMPANY_ID = #{companyId},
+            ORGANIZATION_ID = #{orgid},
+            ORG_TYPE = #{orgtype},
+            <!--PROJECT_ID = #{projectid},-->
+            AREA_ID = #{areaid},
+            REGION_ID = #{regionid}
+        where account_id = #{userid}
+    </update>
+
+    <select id="GetPathByOrgId" parameterType="String" resultType="Map">
+        select type_, path_ from organization_ledger where id_ = #{orgid}
+    </select>
+
+    <insert id="saveNewOrgV2" parameterType="Map" useGeneratedKeys="true" keyProperty="NEW_ID">
+        insert into organization_ledger(
+            name_, parent_id_, type_, cost_center_, wbs_
+        )values(
+            #{name}, #{parent_id}, #{type}, #{costCenter}, #{wbs}
+                );
+    </insert>
+
+    <update id="updatePathfromNewSaveOrg" parameterType="Map">
+        update organization_ledger
+        set path_ = #{path}
+        where id_ = #{NEW_ID}
+    </update>
+
+    <update id="updateNewOrganizationById">
+        update organization_ledger
+        set path_ = #{path},
+            name_ = #{name},
+            parent_id_ = #{parent_id},
+            type_ = #{type},
+            cost_center_ = #{costCenter},
+            wbs_ = #{wbs}
+        where id_ = #{orgId}
+    </update>
+
+    <select id="getAccountById" resultType="Map">
+        select * from account
+        where ACCOUNT_ID = #{userid}
+    </select>
+
+    <select id="getKeeperMaterialList" resultType="Map">
+        SELECT
+            count(le.id) item_count,
+            cat.name,
+            le.te_name,
+            le.keeper,
+            le.keeper_id
+
+        FROM microdb.ledger_equipments le
+                 inner join categories cat on cat.id = le.te_name and code = 2
+              where le.keeper_id = #{userid}
+        group by le.keeper_id, le.te_name
+    </select>
+
+</mapper>

@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+       Copyright 2015-2021 the original author or authors.
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
+          http://www.apache.org/licenses/LICENSE-2.0
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+-->
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.systemservice.repository.ProjectsRepository">
+    <resultMap id="fhProjects" type="com.microservice.systemservice.models.Projects">
+        <id property="id" column="Id"/>
+        <result property="fhId" column="fhid"/>
+        <result property="project" column="ProjectName"/>
+        <result property="region" column="Region"/>
+        <result property="area" column="Area"/>
+    </resultMap>
+
+    <resultMap id="organization" type="com.microservice.systemservice.models.Organization">
+        <id property="organizationId" column="ORGANIZATION_ID"/>
+        <result property="parentId" column="PARENT_ID"/>
+        <result property="fullNameOrg" column="FULL_NAME"/>
+        <result property="sort" column="SORT"/>
+        <result property="createdDate" column="CREATE_DATE"/>
+        <result property="grade" column="GRADE"/>
+    </resultMap>
+
+    <resultMap id="organizationLedger" type="com.microservice.systemservice.models.OrganizationLedger">
+        <id property="id" column="id_"/>
+        <result property="parentId" column="parent_id_"/>
+        <result property="name" column="name_"/>
+        <result property="type" column="type_"/>
+        <result property="path" column="path_"/>
+        <result property="createTime" column="create_time_"/>
+
+    </resultMap>
+
+    <select id="loadAllProjects" resultMap="fhProjects">
+        select * FROM byprojects;
+    </select>
+
+    <select id="loadAllRegionAreaByProjectName"  parameterType="String" resultMap="fhProjects">
+        select * FROM byprojects where ProjectName = #{project};
+    </select>
+
+    <insert id="saveNewProjectDetails" parameterType="com.microservice.systemservice.models.Projects">
+        insert into byprojects(ProjectName,Region,Area) values(#{project},#{region},#{area})
+    </insert>
+
+    <update id="editProjectDetails" parameterType="com.microservice.systemservice.models.Projects">
+        update byprojects set ProjectName = #{project}, Region = #{region}, Area = #{area}
+        where Id = #{id}
+    </update>
+
+    <delete id="deleteProjectDetails" parameterType="String">
+        delete from byprojects where Id = #{projId}
+    </delete>
+
+    <select id="getOrganizations" resultMap="organization">
+        SELECT
+            id_ AS ORGANIZATION_ID, parent_id_ AS PARENT_ID, name_ AS FULL_NAME,
+            DATE_FORMAT(create_time_, '%Y-%m-%d %H:%i:%s') AS CREATE_DATE
+        FROM organization_ledger
+        WHERE parent_id_ != '0'
+    </select>
+
+<!--    <select id="getLedgerOrganizations" resultMap="organizationLedger">
+        SELECT
+            id_, parent_id_, name_, type_, path_, create_time_
+        FROM organization_ledger
+        order by type_
+        ;
+    </select>-->
+
+    <select id="getLedgerOrganizations" resultType="Map">
+        select JSON_OBJECT(
+                           'key', CAST(mainOl.parent_id_ as CHAR(50)),
+                           'label', (select name_ from organization_ledger where id_ = mainOl.parent_id_),
+        'children', JSON_ARRAY(
+                               group_concat(
+                                       JSON_OBJECT(
+                                                 'key', CAST(id_ as CHAR(50)),
+                                                 'label', name_,
+                                                 'children', null
+                                           )
+                                   )
+                               )
+        ) json_res from organization_ledger mainOl
+            where mainOl.type_ = 2
+            group by mainOl.parent_id_
+            ;
+    </select>
+
+    <select id="getLedgerAreaOrganizations" resultType="Map">
+        select
+            JSON_OBJECT(
+                    'key', substring_index(
+                    substring_index(mainOl.path_, '.', 3)
+                , '.', -2) ,
+                    'label',
+                    concat(
+                            (select name_ from organization_ledger where id_ =
+                                                                         substring_index(
+                                                                                 substring_index(mainOl.path_, '.', 2)
+                                                                             , '.', -1)
+                            ), '>'
+                        ,
+                            (select name_ from organization_ledger where id_ =
+                                                                         substring_index(
+                                                                                 substring_index(mainOl.path_, '.', 3)
+                                                                             , '.', -1)
+                            )) ,
+                    'children', JSON_ARRAY(
+                            group_concat(
+                                    JSON_OBJECT(
+                                            'key', CAST(mainOl.id_ as CHAR(50)),
+                                            'label', mainOl.name_,
+                                            'children', null
+                                        )
+                                )
+                        )
+                ) json_res
+        from organization_ledger mainOl
+        where mainOl.type_ = 4
+        group by substring_index(
+                         substring_index(mainOl.path_, '.',-3)
+                     , '.', 2)
+        order by path_;
+    </select>
+
+    <select id="getAllRegions" resultType="java.util.Map">
+        select * from sys_region
+    </select>
+
+    <select id="getOrganizationGrade1" resultType="Map">
+        SELECT
+            id_, name_, type_, parent_id_
+        FROM organization_ledger
+        WHERE 1=1
+            and type_ = 1
+            and status_ = 1
+    </select>
+
+    <select id="getOrganizationGrade2" resultType="Map">
+        SELECT
+            id_, name_, type_, parent_id_
+        FROM organization_ledger
+        WHERE 1=1
+          and type_ = 2
+          and status_ = 1
+    </select>
+
+    <select id="getOrganizationGrade3" resultType="Map">
+        SELECT
+            concat(ol.parent_id_,':',ol.id_) id_,
+            /*name_,*/
+            concat(substr((select name_ from organization_ledger where id_ = ol.parent_id_ ), 1, 3), '..>', ol.name_) name_,
+            ol.type_, ol.parent_id_
+        FROM organization_ledger ol
+        WHERE 1=1
+          and ol.type_ = 3
+          and ol.status_ = 1
+        order by name_
+    </select>
+
+    <select id="getOrganizationGrade4" resultType="Map">
+        SELECT
+            concat(ol.parent_id_,':',ol.id_) id_,
+            /*name_,*/
+            concat(substr((select name_ from organization_ledger where id_ = ol.parent_id_ ), 1, 3), '..>', ol.name_) name_,
+            ol.type_, ol.parent_id_
+        FROM organization_ledger ol
+        WHERE 1=1
+          and ol.type_ = 4
+          and ol.status_ = 1
+        order by name_
+    </select>
+</mapper>

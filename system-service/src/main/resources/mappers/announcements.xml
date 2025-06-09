@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.systemservice.repository.AnnouncementsRepository">
+    <resultMap id="announcements" type="com.microservice.systemservice.models.Announcements">
+        <id property="announcementId" column="AnnouncementId"/>
+        <result property="subject" column="Subject"/>
+        <result property="publishedDate" column="PublishedDate"/>
+        <result property="content" column="Content"/>
+        <result property="thread" column="Thread"/>
+       <!-- <result property="read" column="Read"/>
+        <result property="delivered" column="Delivered"/>
+        <result property="type" column="Type"/>
+        <association property="userTo" resultMap="user"/>
+        <association property="userFrom" resultMap="user"/>-->
+    </resultMap>
+    <resultMap id="user" type="com.microservice.systemservice.models.User">
+        <id property="id" column="ACCOUNT_ID"/>
+        <result property="username" column="ACCOUNT_NAME"/>
+        <result property="name" column="FULL_NAME"/>
+    </resultMap>
+
+    <resultMap id="taskNotif" type="com.microservice.systemservice.models.TaskNotif">
+        <result property="id" column="id_"/>
+        <result property="instId" column="inst_id_"/>
+        <result property="defId" column="def_id_"/>
+        <result property="subject" column="subject_"/>
+        <result property="createTime" column="create_time_"
+                typeHandler="org.apache.ibatis.type.LocalDateTimeTypeHandler"/>
+        <result property="name" column="name_"/>
+    </resultMap>
+
+    <select id="getAllAnnouncementsParam" parameterType="Map" resultMap="announcements">
+        select * from announcements
+        where 1=1
+          <choose>
+              <when test="startDate != null and endDate != null">
+                  and PublishedDate BETWEEN #{startDate} and #{endDate}
+              </when>
+              <when test="startDate != null">and date (PublishedDate) = #{startDate}</when>
+          </choose>
+    </select>
+    <select id="getAllAnnouncements" resultMap="announcements">
+        select * from announcements
+    </select>
+    <select id="getLastAnnouncementId" resultType="java.lang.Integer">
+        select AnnouncementId from announcements ORDER BY AnnouncementId DESC LIMIT 1
+    </select>
+
+    <insert id="insertAnnouncement" parameterType="com.microservice.systemservice.models.Announcements">
+        INSERT INTO
+            announcements(PublishedDate,Content,Subject)
+        VALUES
+            (now(),#{content},#{subject})
+    </insert>
+
+    <delete id="deleteAnnouncement" parameterType="Long">
+        delete from announcements
+            where AnnouncementId = #{announcementId}
+    </delete>
+
+    <select id="getTaskNotifs" parameterType="String" resultMap="taskNotif">
+        SELECT ft.id_, ft.inst_id_, ft.def_id_, ft.subject_, ft.create_time_, ft.name_
+        FROM flow_task_identity fti
+        INNER JOIN flow_task ft ON ft.id_ = fti.task_id_
+        WHERE fti.user_id_ = #{userId}
+        ORDER BY ft.create_time_ DESC
+        LIMIT 5
+    </select>
+
+    <select id="getTaskNotifsCount" parameterType="String" resultType="Integer">
+        SELECT COUNT(0)
+        FROM flow_task_identity fti
+        INNER JOIN flow_task ft ON ft.id_ = fti.task_id_
+        WHERE fti.user_id_ = #{userId}
+    </select>
+
+</mapper>

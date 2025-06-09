@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.inventoryservice.repository.ProductSerialsRepository">
+
+    <resultMap id="getSerialNumbers" type="String">
+        <result column="serial_number" property="serialNumber"/>
+    </resultMap>
+
+    <sql id="whereSerialProductId">
+        <where>
+            <if test="serialTerm != null and serialTerm != ''">
+                <bind name="likeSerialNumber" value="'%' + serialTerm + '%'"/>
+                itm.serial_number LIKE #{likeSerialNumber}
+            </if>
+
+            <if test="productId != null and productId != ''">
+                <bind name="likeProductId" value="'%' + productId + '%'"/>
+                AND itm.product_id LIKE #{likeProductId}
+            </if>
+
+                AND itm.status != 'sold'
+        </where>
+    </sql>
+
+
+    <select id="selectAllSerialNumbers" parameterType="ShowSerialNumbersDto" resultMap="getSerialNumbers">
+        SELECT
+            itm.serial_number
+        FROM item itm
+        <include refid="whereSerialProductId"></include>
+        LIMIT #{start}, #{limit}
+
+    </select>
+
+
+    <insert id="insertSerialNumbers">
+        INSERT INTO item (product_id,
+                          serial_number)
+        VALUES
+        <foreach collection="serialNumbers" item="sn" separator=",">
+            (#{productId}, #{sn})
+        </foreach>
+    </insert>
+
+    <delete id="deleteSerialNumbers">
+
+        DELETE FROM item
+        WHERE product_id = #{productId}
+        AND status != 'sold'
+        AND serial_number IN
+        <foreach item="sn" collection="serialNumbers" open="(" separator="," close=")">
+            #{sn}
+        </foreach>
+    </delete>
+
+</mapper>

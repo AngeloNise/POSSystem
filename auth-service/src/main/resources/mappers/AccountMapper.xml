@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+       Copyright 2015-2021 the original author or authors.
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
+          http://www.apache.org/licenses/LICENSE-2.0
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+-->
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fiberhome.authservice.repository.LoginUserDetailsMapper">
+    <resultMap id="accountMap" type="com.fiberhome.authservice.model.Account">
+        <id property="accountId" column="ACCOUNT_ID"/>
+        <result property="username" column="ACCOUNT_NAME"/>
+        <result property="password" column="PASSWORD_"/>
+        <result property="organizationId" column="ORGANIZATION_ID"/>
+        <collection property="roles" ofType="com.fiberhome.authservice.model.Role">
+            <id property="roleId" column="ROLE_ID"/>
+            <result property="roleName" column="NAME_"/>
+            <result property="description" column="DESCRIBES"/>
+            <result property="gradeId" column="GRADE_ID"/>
+        </collection>
+    </resultMap>
+
+    <select id="findByUsername" resultMap="accountMap"
+            parameterType="String">
+        select
+            acc.account_id, acc.account_name, acc.password_, acc.role_id, r.NAME_, acc.organization_id from account acc
+        inner join role r on r.role_id = acc.role_id
+        where acc.account_name = #{userName};
+    </select>
+
+    <select id="getUserByID" resultType="Map">
+        select
+            acc.ACCOUNT_ID,
+            acc.ACCOUNT_NAME,
+            acc.FULL_NAME,
+            acc.HOME_ADDRESS,
+            acc.MOBILE_PHONE_A,
+            acc.EMAIL1,
+            acc.ROLE_ID,
+            (select NAME_ from role where ROLE_ID = acc.ROLE_ID) ROLE_NAME,
+            acc.ORGANIZATION_ID,
+            (select name_ from organization_ledger where id_ = acc.ORGANIZATION_ID) ORG_NAME,
+            acc.ORG_TYPE,
+            acc.AREA_ID,
+            (select name_ from organization_ledger where id_ = acc.AREA_ID) AREA_NAME,
+            acc.COMPANY_ID,
+            (select name_ from organization_ledger where id_ = acc.COMPANY_ID) COMPANY_NAME,
+            acc.REGION_ID,
+            (select name_ from organization_ledger where id_ = acc.REGION_ID) REGION_NAME,
+            acc.EMPLOYEE_ID,
+            acc.SOURCE_MENU,
+            acc.TYPE,
+            group_concat(concat(roles.role_id_,':', roles.org_id_)) rolorgids,
+            group_concat(concat(
+                    (select NAME_ from role where ROLE_ID = roles.role_id_)
+                ,':',
+                    (select name_ from organization_ledger where id_ = roles.org_id_))) rolorgnames,
+            (select path_ from organization_ledger where id_ = acc.ORGANIZATION_ID) ORG_PATH,
+            acc.COUNTER
+        from account acc,
+             (select * from role_org_relation where user_id_ = #{id}) roles
+        where ACCOUNT_ID = #{id};
+    </select>
+
+    <select id="GetAllOrganizationList" resultType="Map">
+        select * from organization_ledger;
+    </select>
+
+    <insert id="insertActivityLog2" parameterType="com.fiberhome.authservice.model.ActivityLog">
+        INSERT INTO activity_log
+            (PAGE_NAME, ACTION, CREATED_DATE, CREATED_BY_ID, CREATED_BY_NAME)
+        VALUES
+            (#{pageName}, #{action}, now(), #{createdById}, #{createdByName})
+    </insert>
+
+</mapper>

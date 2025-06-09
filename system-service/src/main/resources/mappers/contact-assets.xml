@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+       Copyright 2015-2021 the original author or authors.
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
+          http://www.apache.org/licenses/LICENSE-2.0
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+-->
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.systemservice.repository.ContactAssetsRepository">
+    <resultMap id="contactAssets" type="com.microservice.systemservice.models.ContactAssets">
+        <id property="id" column="Id"/>
+        <result property="project" column="Project"/>
+        <result property="region" column="Region"/>
+        <result property="area" column="Area"/>
+        <result property="projectLeadName" column="ProjectLeadName"/>
+        <result property="projectLeadWeChatId" column="ProjectLeadWeChatId"/>
+        <result property="platformManagerAndAdminManager" column="PlatformManagerAndAdminManager"/>
+        <result property="pmWeChatId" column="PMWeChatId"/>
+        <result property="areaAdmin" column="AreaAdmin"/>
+        <result property="areaAdminWeChatId" column="AreaAdminWeChatId"/>
+        <result property="contact" column="Contact"/>
+    </resultMap>
+
+    <select id="loadContactAssetList" resultMap="contactAssets">
+        select a.*  from (select * from contact_list )a order by Region, ProjectLeadName, Project;
+    </select>
+
+    <insert id="updateContactAssetList" parameterType="com.microservice.systemservice.models.ContactAssets">
+        INSERT INTO contact_list(Id,Project,Region,Area,ProjectLeadName,ProjectLeadWeChatId,PlatformManagerAndAdminManager,PMWeChatId,AreaAdmin,AreaAdminWeChatId,Contact)
+        VALUES (
+                #{id}, #{contactAssets.project}, #{contactAssets.region}, #{contactAssets.area},#{contactAssets.projectLeadName},#{contactAssets.projectLeadWeChatId},#{contactAssets.platformManagerAndAdminManager},
+                #{contactAssets.pmWeChatId},#{contactAssets.areaAdmin},#{contactAssets.areaAdminWeChatId},#{contactAssets.contact}
+               )
+		ON DUPLICATE KEY UPDATE Id=VALUES(Id), Project=VALUES(Project), Region=VALUES(Region), Area=VALUES(Area), ProjectLeadName=VALUES(ProjectLeadName), ProjectLeadWeChatId=VALUES(ProjectLeadWeChatId),
+            PlatformManagerAndAdminManager=VALUES(PlatformManagerAndAdminManager), PMWeChatId=VALUES(PMWeChatId), AreaAdmin=VALUES(AreaAdmin), AreaAdminWeChatId=VALUES(AreaAdminWeChatId),
+            Contact=VALUES(Contact)
+    </insert>
+
+    <insert id="saveContactAssetList" parameterType="com.microservice.systemservice.models.ContactAssets">
+        INSERT INTO contact_list(Project,Region,Area,ProjectLeadName,ProjectLeadWeChatId,PlatformManagerAndAdminManager,PMWeChatId,AreaAdmin,AreaAdminWeChatId,Contact)
+        VALUES (
+                   #{project}, #{region}, #{area},#{projectLeadName},#{projectLeadWeChatId},#{platformManagerAndAdminManager},
+                   #{pmWeChatId},#{areaAdmin},#{areaAdminWeChatId},#{contact}
+               )
+    </insert>
+
+    <delete id="deleteSelectedContactAssetList" parameterType="Long">
+        DELETE FROM contact_list where Id = #{id}
+    </delete>
+
+    <update id="updateContactListProject" parameterType="Map">
+        update contact_list set Project = #{newProjName} where Project = #{oldProjName}
+    </update>
+
+</mapper>

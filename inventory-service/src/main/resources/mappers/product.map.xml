@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.inventoryservice.repository.ProductRepository">
+    <resultMap id="selectProductPage" type="ProductPageModel">
+        <result column="id" property="id"/>
+        <result column="capital" property="capital"/>
+        <result column="serialize" property="serialize"/>
+        <result column="serial_number" property="serialNumber"/>
+        <result column="name" property="productName"/>
+        <result column="image" property="productImage"/>
+        <result column="variation" property="variation"/>
+        <result column="profit" property="profit"/>
+        <result column="stocks" property="stocks"/>
+        <result column="created_by" property="createBy"/>
+        <result column="modified_by" property="modifiedBy"/>
+        <result column="created_date" property="createdDate"/>
+        <result column="modified_date" property="modifiedDate"/>
+    </resultMap>
+
+    <sql id="whereProductList">
+
+        <where>
+            <if test="serialNumber != null and serialNumber != ''">
+                <bind name="likeSerialNumber" value="'%' + serialNumber + '%'"/>
+                AND rec.serial_number LIKE #{likeSerialNumber}
+            </if>
+
+            <if test="productName != null and productName != ''">
+                <bind name="likeName" value="'%' + productName + '%'"/>
+                AND pro.name LIKE #{likeName}
+            </if>
+
+            <if test="variation != null and variation != ''">
+                <bind name="likeVariation" value="'%' + variation + '%'"/>
+                AND pro.variation LIKE #{likeVariation}
+            </if>
+
+            <if test="modifiedBy != null and modifiedBy != ''">
+                <bind name="likeModifiedBy" value="'%' + modifiedBy + '%'"/>
+                AND pro.modified_by LIKE #{likeModifiedBy}
+            </if>
+
+            <if test="createdBy != null and createdBy != ''">
+                <bind name="likeCreatedBy" value="'%' + createdBy + '%'"/>
+                AND pro.created_by LIKE #{likeCreatedBy}
+            </if>
+
+            <if test="createdDate != null">
+                <bind name="likeCreatedDate" value="'%' + createdDate + '%'"/>
+                AND DATE_FORMAT(pro.created_date, '%Y-%m-%d') LIKE #{likeCreatedDate}
+            </if>
+
+        </where>
+    </sql>
+
+    <select id="getProductList" parameterType="SearchProductDto" resultMap="selectProductPage">
+        SELECT pro.id,
+        pro.name,
+        pro.image,
+        pro.variation,
+        pro.capital,
+        pro.profit,
+        pro.created_by,
+        pro.serialize,
+        pro.created_date,
+        pro.stocks,
+        pro.modified_by,
+        pro.modified_date
+        FROM product pro
+        <if test="serialNumber != null and serialNumber != ''">
+            LEFT JOIN item rec ON rec.product_id = pro.id
+        </if>
+        <include refid="whereProductList"/>
+        ORDER BY created_date DESC
+        LIMIT #{start}, #{limit}
+
+    </select>
+
+    <select id="getTotalCount" resultType="Integer" parameterType="SearchProductDto">
+        SELECT COUNT(0)
+        FROM product pro
+        <if test="serialNumber != null and serialNumber != ''">
+            LEFT JOIN item rec ON rec.product_id = pro.id
+        </if>
+        <include refid="whereProductList"></include>
+    </select>
+
+    <insert id="onAddNewProduct" parameterType="ProductActionModel" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO product
+        (name,
+         image,
+         variation,
+         capital,
+         profit,
+         created_by,
+         stocks,
+         created_date,
+         serialize)
+        VALUES (#{productName},
+                #{productImage},
+                #{variation},
+                #{capital},
+                #{profit},
+                #{createBy},
+                #{stocks},
+                now(),
+                #{serialize})
+    </insert>
+
+    <update id="onEditNewProduct" parameterType="ProductActionModel">
+        UPDATE product
+        SET name          = #{productName},
+            variation     = #{variation},
+            capital       = #{capital},
+            serialize     = #{serialize},
+            profit        = #{profit},
+            modified_by   = #{modifiedBy},
+            stocks        = #{stocks},
+            modified_date = now()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteSelectedProduct" parameterType="ProductIdModel">
+        DELETE FROM product
+        WHERE id = #{productId}
+    </delete>
+
+    <select id="fetchProductImagePath" parameterType="ProductIdModel" resultType="String">
+        SELECT
+            image
+            FROM product
+        WHERE id = #{productId}
+    </select>
+
+    <delete id="deleteAssociatedSerials" parameterType="ProductIdModel">
+        DELETE FROM item
+        WHERE product_id = #{productId} AND status != 'sold'
+    </delete>
+
+    <update id="uploadProductImage" parameterType="UploadImageModel">
+        UPDATE product
+        SET image = #{imgPath}
+        WHERE id = #{productId}
+    </update>
+</mapper>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.productsalesservice.repository.StoreRepository">
+
+    <resultMap id="StoreResultMap" type="com.example.productsalesservice.models.StoreDto">
+        <result property="storeName" column="store_name" />
+        <result property="storeLogo" column="store_logo" />
+    </resultMap>
+
+    <select id="getStore" resultMap="StoreResultMap">
+        SELECT store_name, store_logo
+        FROM store
+        LIMIT 1
+    </select>
+
+    <update id="updateStore" parameterType="com.example.productsalesservice.models.StoreDto">
+        UPDATE store
+        SET store_name = #{storeDto.storeName},
+            store_logo = #{storeDto.storeLogo},
+            updated_at = NOW()
+    </update>
+
+    <insert id="insertStore" parameterType="com.example.productsalesservice.models.StoreDto">
+        INSERT INTO store (store_name, store_logo, created_at, updated_at)
+        VALUES (#{storeDto.storeName}, #{storeDto.storeLogo}, NOW(), NOW())
+    </insert>
+
+</mapper>

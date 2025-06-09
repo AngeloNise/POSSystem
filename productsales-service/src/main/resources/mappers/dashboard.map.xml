@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.productsalesservice.repository.DashboardRepository">
+    <!--Metrics-->
+    <resultMap id="MetricMap" type="com.example.productsalesservice.models.MetricDto">
+        <result property="capital" column="capital"/>
+        <result property="profit" column="profit"/>
+        <result property="price" column="price"/>
+    </resultMap>
+    <select id="getTodayMetrics" resultMap="MetricMap">
+        SELECT(
+        -- Capital: Sum of capital of products created today
+            SELECT
+            COALESCE(SUM(
+            CASE
+            WHEN p.serialize = 1 THEN
+                (SELECT COUNT(*)
+            FROM item i
+            WHERE i.product_id = p.id) * p.capital
+                ELSE p.capital * p.stocks
+                END), 0) AS capital
+            FROM product p
+            WHERE DATE(p.created_date) = CURRENT_DATE)
+            AS capital,
+
+        -- Profit: From purchased products
+            COALESCE(SUM(CASE
+                WHEN p.serialize = 1 THEN p.profit
+                ELSE ri.quantity * p.profit
+                END), 0) AS profit,
+
+        -- Price: From purchased products
+            COALESCE(SUM(CASE
+                WHEN p.serialize = 1 THEN (p.capital + p.profit)
+                ELSE ri.quantity * (p.capital + p.profit)
+                END), 0) AS price
+
+            FROM receipt r
+                LEFT JOIN receipt_item ri ON r.id = ri.receipt_id
+                LEFT JOIN product p ON ri.product_id = p.id
+
+            WHERE DATE(r.created_date) = CURRENT_DATE
+
+            AND ((p.serialize = 1 AND EXISTS (SELECT 1
+            FROM item i
+                WHERE i.product_id = p.id AND i.status = 'sold'))
+            OR (p.serialize != 1 AND ri.product_id IS NOT NULL)
+        )
+    </select>
+
+    <select id="getMetricsBetween" parameterType="map" resultMap="MetricMap">
+        SELECT(
+            SELECT
+            COALESCE(SUM(
+            CASE
+                WHEN p.serialize = 1 THEN (
+                SELECT COUNT(*)
+            FROM item i
+            WHERE i.product_id = p.id) * p.capital
+                ELSE p.capital * p.stocks
+                END), 0) AS capital
+            FROM product p
+            WHERE DATE(p.created_date) BETWEEN #{startDate} AND #{endDate})
+            AS capital,
+
+            COALESCE(SUM(CASE
+                WHEN p.serialize = 1 THEN p.profit
+                ELSE ri.quantity * p.profit
+                END), 0) AS profit,
+
+            COALESCE(SUM(CASE
+                WHEN p.serialize = 1 THEN (p.capital + p.profit)
+                ELSE ri.quantity * (p.capital + p.profit)
+                END), 0) AS price
+
+            FROM receipt r
+                LEFT JOIN receipt_item ri ON r.id = ri.receipt_id
+                LEFT JOIN product p ON ri.product_id = p.id
+
+            WHERE DATE(r.created_date) BETWEEN #{startDate} AND #{endDate}
+                AND ((p.serialize = 1 AND EXISTS (
+                SELECT 1
+                FROM item i
+            WHERE i.product_id = p.id AND i.status = 'sold'))
+            OR (p.serialize != 1 AND ri.product_id IS NOT NULL)
+        )
+    </select>
+
+    <!--recent purchase-->
+    <resultMap id="RecentPurchaseMap" type="com.example.productsalesservice.models.RecentPurchaseDto">
+        <result property="id" column="id"/>
+        <result property="productName" column="product_name"/>
+        <result property="counter" column="counter"/>
+        <result property="createdBy" column="created_by"/>
+    </resultMap>
+
+    <select id="getRecentPurchases" resultMap="RecentPurchaseMap" parameterType="map">
+        SELECT+
+            ri.id,
+            ri.product_name,
+            r.counter,
+            r.created_by
+        FROM receipt r
+            LEFT JOIN receipt_item ri ON r.id = ri.receipt_id
+        WHERE DATE(ri.created_date) = DATE(NOW())
+        ORDER BY ri.created_date DESC
+        LIMIT #{limit} OFFSET #{start}
+    </select>
+
+    <select id="getTotalRecentPurchaseCount" resultType="int" parameterType="map">
+        SELECT COUNT(0)
+        FROM receipt r
+            LEFT JOIN receipt_item ri ON r.id = ri.receipt_id
+        WHERE DATE(ri.created_date) = DATE(NOW())
+    </select>
+
+    <!--out of stocks-->
+    <resultMap id="StockDtoResultMap" type="com.example.productsalesservice.models.StockDto">
+        <id property="id" column="id"/>
+        <result property="image" column="image" jdbcType="VARCHAR"/>
+        <result property="name" column="name"/>
+    </resultMap>
+
+    <sql id="whereStockList">
+        <where>
+            <!-- Filter out-of-stock conditions -->
+            AND ((p.serialize = 0 AND (p.stocks IS NULL OR p.stocks = 0))
+            OR (p.serialize = 1 AND NOT EXISTS (
+            SELECT 1 FROM item i2
+            WHERE i2.product_id = p.id
+            AND i2.status != 'sold')))
+        </where>
+    </sql>
+
+    <select id="stockList" resultMap="StockDtoResultMap" parameterType="map">
+        SELECT
+            p.id,
+            p.image,
+            p.name
+        FROM product p
+            LEFT JOIN item i ON p.id = i.product_id AND i.status != 'sold'
+            <include refid="whereStockList"/>
+            GROUP BY p.id
+            ORDER BY p.created_date DESC
+        LIMIT #{limit} OFFSET #{start}
+    </select>
+
+    <select id="getTotalStockCount" resultType="int" parameterType="map">
+        SELECT COUNT(DISTINCT p.id)
+        FROM product p
+            LEFT JOIN item i ON p.id = i.product_id
+        <include refid="whereStockList"/>
+    </select>
+</mapper>

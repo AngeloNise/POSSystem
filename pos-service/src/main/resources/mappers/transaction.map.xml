@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.posservice.repository.TransactionRepository">
+
+    <!-- === ProductDto ResultMap === -->
+    <resultMap id="ProductDtoResultMap" type="com.example.posservice.models.ProductDto">
+        <id property="id" column="id"/>
+        <result property="image" column="image" jdbcType="VARCHAR"/>
+        <result property="name" column="name"/>
+        <result property="price" column="price"/>
+        <result property="stocks" column="stocks"/>
+        <result property="serialize" column="serialize"/>
+        <result property="serialNumber" column="serial_number"/>
+    </resultMap>
+
+    <!-- === Where Clause for Product Search === -->
+    <sql id="whereProductList">
+        <where>
+            <if test="name != null and name != ''">
+                <bind name="prefixName" value="name + '%'" />
+                <bind name="spaceName" value="'% ' + name + '%'" />
+                <bind name="likeName" value="'%' + name + '%'" />
+            AND (
+                p.name LIKE #{prefixName}
+                OR p.name LIKE #{spaceName}
+                OR p.name LIKE #{likeName}
+                OR i.serial_number LIKE #{likeName})
+            </if>
+
+            AND (
+                (p.serialize = 0 AND p.stocks > 0)
+                OR (p.serialize = 1 AND EXISTS (
+                SELECT 1 FROM item i2
+                WHERE i2.product_id = p.id
+            AND i2.status != 'sold')))
+        </where>
+    </sql>
+
+
+    <!-- === Product Queries === -->
+    <select id="searchByNameOrSerial" resultMap="ProductDtoResultMap" parameterType="map">
+        SELECT
+            p.id,
+            p.image,
+            p.name,
+            p.price,
+            p.stocks,
+            p.serialize,
+            i.serial_number
+        FROM product p
+        LEFT JOIN item i ON p.id = i.product_id AND i.status != 'sold'
+            <include refid="whereProductList" />
+        GROUP BY p.id, p.image, p.name, p.price, p.stocks, p.serialize, i.serial_number
+        ORDER BY p.name
+            LIMIT #{limit} OFFSET #{start}
+    </select>
+
+
+    <select id="getTotalProductCount" resultType="int" parameterType="map">
+        SELECT COUNT(DISTINCT p.name)
+        FROM product p
+            LEFT JOIN item i ON p.id = i.product_id
+            <include refid="whereProductList"/>
+    </select>
+
+    <update id="updateProductStock" parameterType="map">
+        UPDATE product
+        SET stocks = stocks - #{quantity}
+        WHERE id = #{productId}
+    </update>
+
+    <update id="updateItemStatusToSold" parameterType="map">
+        UPDATE item
+        SET status = 'sold'
+        WHERE serial_number = #{serialNumber}
+    </update>
+
+    <!-- === ReceiptItem ResultMap === -->
+    <resultMap id="ReceiptItemResultMap" type="com.example.posservice.models.ReceiptItem">
+        <id property="id" column="id"/>
+        <result property="receiptId" column="receipt_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="productName" column="product_name"/>
+        <result property="itemId" column="item_id"/>
+        <result property="serialNumber" column="serial_number"/>
+        <result property="price" column="price"/>
+        <result property="quantity" column="quantity"/>
+        <result property="createdDate" column="created_date" typeHandler="org.apache.ibatis.type.LocalDateTimeTypeHandler"/>
+    </resultMap>
+
+    <!-- === ReceiptItem & Receipt Queries === -->
+    <insert id="insertReceiptItem" parameterType="com.example.posservice.models.ReceiptItem">
+        INSERT INTO receipt_item
+        (receipt_id, product_id, product_name, item_id, serial_number, price, quantity, created_date)
+        VALUES(#{receiptId}, #{productId}, #{productName}, #{itemId}, #{serialNumber}, #{price}, #{quantity}, #{createdDate})
+    </insert>
+
+    <select id="findItemIdBySerialNumber" resultType="Integer" parameterType="String">
+        SELECT id
+        FROM item
+        WHERE serial_number = #{serialNumber}
+        LIMIT 1
+    </select>
+
+    <insert id="insertReceipt" parameterType="com.example.posservice.models.Receipt" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO receipt
+        (receipt_number, total_price, created_by, counter)
+        VALUES
+        (#{receiptNumber}, #{totalPrice}, #{createdBy}, #{counter})
+    </insert>
+
+    <select id="getLatestReceiptNumber" resultType="String">
+        SELECT receipt_number
+        FROM receipt
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="searchSerialByProductId" resultType="string">
+        SELECT DISTINCT i.serial_number
+        FROM item i
+        WHERE i.product_id = #{productId}
+        AND i.status != 'sold'
+        AND LOWER(i.serial_number) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+        LIMIT 10
+    </select>
+
+</mapper>

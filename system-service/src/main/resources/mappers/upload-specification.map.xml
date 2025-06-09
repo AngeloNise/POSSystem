@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.systemservice.repository.UploadSpecificationRepository">
+
+    <resultMap id="dataDictionaryMap" type="com.microservice.systemservice.models.DataDictionary">
+        <id property="dataDictID" column="id"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="category" column="category"/>
+        <result property="teNameId" column="te_name_id"/>
+        <result property="teName" column="te_name"/>
+        <result property="itemCodeId" column="item_code_id"/>
+        <result property="itemCode" column="item_code"/>
+        <result property="brandId" column="brand_id"/>
+        <result property="brand" column="brand"/>
+        <result property="modelId" column="model_id"/>
+        <result property="model" column="model"/>
+        <result property="specification" column="specification"/>
+        <result property="description" column="description"/>
+        <result property="lifeSpan" column="lifespan"/>
+        <result property="marketValue" column="market_value"/>
+        <result property="createdById" column="created_by_id"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdDate" column="created_date"/>
+        <result property="updatedById" column="updated_by_id"/>
+        <result property="updatedBy" column="updated_by"/>
+        <result property="updatedDate" column="updated_date"/>
+    </resultMap>
+
+    <resultMap id="uploadSpecificationMap" type="com.microservice.systemservice.models.UploadSpecification">
+        <result property="id" column="Id"/>
+        <result property="excelFileIdentifierID" column="ExcelFileIdentifierID"/>
+        <result property="project" column="Project"/>
+        <result property="area" column="Area"/>
+        <result property="region" column="Region"/>
+        <result property="fileName" column="FileName"/>
+        <result property="fileType" column="FileType"/>
+        <result property="extension" column="Extension"/>
+        <result property="uploadedBy" column="UploadedBy"/>
+        <result property="dateUpload" column="DateUpload"/>
+        <result property="status" column="Status"/>
+        <result property="filePath" column="FilePath"/>
+    </resultMap>
+
+    <insert id="insertUploadSpecification" parameterType="com.microservice.systemservice.models.UploadSpecification"
+            useGeneratedKeys="true" keyColumn="Id" keyProperty="id">
+        INSERT INTO upload_datadict_te
+        (Id,
+         ExcelFileIdentifierID,
+         Project,
+         Area,
+         Region,
+         FileName,
+         FileType,
+         Extension,
+         UploadedBy,
+         Status,
+         FilePath)
+        VALUES
+            (#{id},
+             #{excelFileIdentifierID},
+             #{project},
+             #{area},
+             #{region},
+             #{fileName},
+             #{fileType},
+             #{extension},
+             #{uploadedBy},
+             #{status},
+             #{filePath})
+    </insert>
+
+    <insert id="specificationCreateUpload" parameterType="com.microservice.systemservice.models.DataDictionary"
+            useGeneratedKeys="true" keyColumn="id">
+        INSERT INTO sys_data_dict
+        (
+            category,
+            te_name,
+            item_code,
+            brand,
+            model,
+            specification,
+            description,
+            lifespan,
+            market_value,
+            created_by_id,
+            created_by,
+            created_date,
+            updated_by_id,
+            updated_by,
+            updated_date
+        )
+        VALUES
+            (
+                #{category},
+                #{teName},
+                #{itemCode},
+                #{brand},
+                #{model},
+                #{specification},
+                #{description},
+                #{lifeSpan},
+                #{marketValue},
+                #{createdById},
+                #{createdBy},
+                now(),
+                #{updatedById},
+                #{updatedBy},
+                now()
+            );
+
+    </insert>
+
+    <update id="updateFilePathSpec">
+        UPDATE upload_datadict_te
+        SET FilePath = #{filePath}
+        WHERE Id = #{id}
+    </update>
+
+    <select id="getMapOrgByAccountName" resultType="Map">
+        SELECT a.ORG_TYPE, a.ORGANIZATION_ID, ogn.name_ as ORGANIZATION_NAME,
+               a.AREA_ID, an.name_ as AREA_NAME,
+               a.REGION_ID, rn.name_ as REGION_NAME
+        FROM account a
+                 LEFT JOIN organization_ledger ogn on ogn.id_ =a.ORGANIZATION_ID
+                 LEFT JOIN organization_ledger an on an.id_ =a.AREA_ID
+                 LEFT JOIN organization_ledger rn on rn.id_ =a.REGION_ID
+        WHERE a.ACCOUNT_NAME = #{accountName}
+    </select>
+
+    <select id="getById" parameterType="String" resultMap="uploadSpecificationMap">
+        SELECT * FROM upload_datadict_te where Id = #{id}
+    </select>
+
+    <update id="updateStatus" parameterType="Map">
+        UPDATE upload_datadict_te SET Status = #{status} WHERE Id = #{id}
+    </update>
+
+    <insert id="insertActivityLog1" parameterType="com.microservice.systemservice.models.ActivityLog">
+        INSERT INTO activity_log
+            (PAGE_NAME, ACTION, CREATED_DATE, CREATED_BY_ID, CREATED_BY_NAME)
+        VALUES
+            (#{pageName}, #{action}, now(), #{createdById}, #{createdByName})
+    </insert>
+
+</mapper>

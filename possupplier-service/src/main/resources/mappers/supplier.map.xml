@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.possupplierservice.repository.SupplierRepository">
+
+    <!-- Result Map for SupplierDto -->
+    <resultMap id="SupplierMap" type="com.example.possupplierservice.models.SupplierDto">
+        <id column="id" property="id"/>
+        <result column="last_name" property="lastName"/>
+        <result column="first_name" property="firstName"/>
+        <result column="middle_name" property="middleName"/>
+        <result column="birthday" property="birthday"/>
+        <result column="address" property="address"/>
+        <result column="mobile_number" property="mobileNumber"/>
+        <result column="telephone_number" property="telephoneNumber"/>
+        <result column="email" property="email"/>
+        <result column="facebook" property="facebook"/>
+        <result column="instagram" property="instagram"/>
+        <result column="image" property="image"/>
+        <result column="mother_name" property="motherName"/>
+        <result column="father_name" property="fatherName"/>
+    </resultMap>
+
+    <!-- SQL for where conditions of supplier list -->
+    <sql id="whereSupplierList">
+        <where>
+            <if test="firstName != null and firstName != ''">
+                <bind name="likeFirstName" value="'%' + firstName + '%'"/>
+                AND first_name LIKE #{likeFirstName}
+            </if>
+            <if test="lastName != null and lastName != ''">
+                <bind name="likeLastName" value="'%' + lastName + '%'"/>
+                AND last_name LIKE #{likeLastName}
+            </if>
+            <if test="middleName != null and middleName != ''">
+                <bind name="likeMiddleName" value="'%' + middleName + '%'"/>
+                AND middle_name LIKE #{likeMiddleName}
+            </if>
+            <if test="address != null and address != ''">
+                <bind name="likeAddress" value="'%' + address + '%'"/>
+                AND address LIKE #{likeAddress}
+            </if>
+            <if test="email != null and email != ''">
+                <bind name="likeEmail" value="'%' + email + '%'"/>
+                AND email LIKE #{likeEmail}
+            </if>
+            <if test="mobileNumber != null and mobileNumber != ''">
+                <bind name="likeMobileNumber" value="'%' + mobileNumber + '%'"/>
+                AND mobile_number LIKE #{likeMobileNumber}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+    </sql>
+
+    <!-- Insert a single supplier -->
+    <insert id="createSupplier" parameterType="com.example.possupplierservice.models.SupplierDto"
+            useGeneratedKeys="true" keyColumn="id" keyProperty="id">
+        INSERT INTO suppliers (
+            last_name,
+            first_name,
+            middle_name,
+            birthday,
+            address,
+            mobile_number,
+            telephone_number,
+            email,
+            facebook,
+            instagram,
+            image,
+            mother_name,
+            father_name
+        )
+        VALUES (
+           #{lastName},
+           #{firstName},
+           #{middleName},
+           #{birthday},
+           #{address},
+           #{mobileNumber},
+           #{telephoneNumber},
+           #{email},
+           #{facebook},
+           #{instagram},
+           #{image},
+           #{motherName},
+           #{fatherName}
+       )
+    </insert>
+
+    <!-- Update an existing supplier -->
+    <update id="updateSupplier" parameterType="com.example.possupplierservice.models.SupplierDto">
+        UPDATE suppliers
+        SET
+            last_name = #{lastName},
+            first_name = #{firstName},
+            middle_name = #{middleName},
+            birthday = #{birthday},
+            address = #{address},
+            mobile_number = #{mobileNumber},
+            telephone_number = #{telephoneNumber},
+            email = #{email},
+            facebook = #{facebook},
+            instagram = #{instagram},
+            image = #{image},
+            mother_name = #{motherName},
+            father_name = #{fatherName}
+        WHERE id = #{id}
+    </update>
+
+    <!-- Insert multiple suppliers -->
+    <insert id="importSuppliers" parameterType="java.util.List" useGeneratedKeys="true" keyColumn="id" keyProperty="id">
+        INSERT INTO suppliers (
+        last_name,
+        first_name,
+        middle_name,
+        birthday,
+        address,
+        mobile_number,
+        telephone_number,
+        email,
+        facebook,
+        instagram,
+        image,
+        mother_name,
+        father_name
+        )
+        VALUES
+        <foreach collection="suppliers" item="supplier" separator=",">
+            (
+            #{supplier.lastName},
+            #{supplier.firstName},
+            #{supplier.middleName},
+            #{supplier.birthday},
+            #{supplier.address},
+            #{supplier.mobileNumber},
+            #{supplier.telephoneNumber},
+            #{supplier.email},
+            #{supplier.facebook},
+            #{supplier.instagram},
+            #{supplier.image},
+            #{supplier.motherName},
+            #{supplier.fatherName}
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE id = id
+    </insert>
+
+    <!-- Select a single supplier by id -->
+    <select id="getSupplier" parameterType="Integer" resultMap="SupplierMap">
+        SELECT id, last_name, first_name, middle_name, birthday, address,
+               mobile_number, telephone_number, email, facebook, instagram,
+               image, mother_name, father_name
+        FROM suppliers
+        WHERE id = #{id}
+    </select>
+
+    <!-- Select suppliers based on filters -->
+    <select id="getSuppliers" parameterType="Map" resultMap="SupplierMap">
+        SELECT id, last_name, first_name, middle_name, birthday, address,
+            mobile_number, telephone_number, email, facebook, instagram,
+            image, mother_name, father_name
+        FROM suppliers
+        <include refid="whereSupplierList"/>
+        ORDER BY id DESC
+        LIMIT #{start}, #{limit}
+    </select>
+
+    <!-- Select all suppliers with optional filters (no pagination) -->
+    <select id="getSuppliersOverall" parameterType="Map" resultMap="SupplierMap">
+        SELECT id, last_name, first_name, middle_name, birthday, address,
+            mobile_number, telephone_number, email, facebook, instagram,
+            image, mother_name, father_name
+        FROM suppliers
+        <include refid="whereSupplierList"/>
+        ORDER BY id DESC
+    </select>
+
+    <!-- Count total suppliers based on filters -->
+    <select id="getTotalSuppliersCount" parameterType="Map" resultType="Integer">
+        SELECT COUNT(0)
+        FROM suppliers
+        <include refid="whereSupplierList"/>
+    </select>
+
+    <!-- Delete a supplier by id -->
+    <delete id="deleteSupplier" parameterType="Integer">
+        DELETE FROM suppliers WHERE id = #{id}
+    </delete>
+
+    <!-- Delete multiple suppliers by ids -->
+    <delete id="deleteSuppliers" parameterType="List">
+        DELETE FROM suppliers WHERE id IN
+        <foreach collection="ids" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

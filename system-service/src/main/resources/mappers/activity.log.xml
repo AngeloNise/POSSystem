@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.systemservice.repository.ActivityLogRepository">
+
+    <insert id="insertActivityLog" parameterType="com.microservice.systemservice.models.ActivityLog">
+        INSERT INTO activity_log
+        (PAGE_NAME, ACTION, CREATED_DATE, CREATED_BY_ID, CREATED_BY_NAME)
+        VALUES
+        (#{pageName}, #{action}, now(), #{createdById}, #{createdByName})
+    </insert>
+
+</mapper>

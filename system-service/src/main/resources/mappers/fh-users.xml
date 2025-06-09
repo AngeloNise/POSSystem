@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+       Copyright 2015-2021 the original author or authors.
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
+          http://www.apache.org/licenses/LICENSE-2.0
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+-->
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.systemservice.repository.FhUserRepository">
+    <resultMap id="fhUsers" type="com.microservice.systemservice.models.FhUser">
+        <id property="id" column="id"/>
+        <result property="fhId" column="fhid"/>
+        <result property="projName" column="proj_name"/>
+        <result property="fullName" column="display_name"/>
+        <result property="fhUsername" column="username"/>
+        <result property="password" column="password"/>
+        <result property="department" column="department"/>
+        <result property="fhPosition" column="position"/>
+        <result property="status" column="status"/>
+        <collection property="rolesList" ofType="com.microservice.systemservice.models.Roles">
+            <result property="rolesId" column="rolesId"/>
+            <result property="fhId" column="fhid"/>
+            <result property="permission" column="permission"/>
+            <result property="original_area" column="original_area"/>
+            <result property="original_region" column="original_region"/>
+            <result property="area" column="area"/>
+            <result property="region" column="region"/>
+            <result property="userAccess" column="access"/>
+            <result property="privileges" column="privileges"/>
+        </collection>
+    </resultMap>
+    <resultMap id="fhProjects" type="com.microservice.systemservice.models.Projects">
+        <id property="id" column="Id"/>
+        <result property="fhId" column="fhid"/>
+        <result property="project" column="ProjectName"/>
+        <result property="region" column="Region"/>
+        <result property="area" column="Area"/>
+    </resultMap>
+
+    <select id="loadAllUsers"  resultMap="fhUsers">
+        select a.*, b.access, b.area, b.region, b.permission,
+        b.access, b.Id as 'rolesId'
+        from fhuser a
+        left join roles b on a.fhid = b.fhid
+        order by a.id
+    </select>
+
+    <select id="getFhIdUser" parameterType="Long">
+        select fhid from fhuser where id = #{id}
+    </select>
+
+    <select id="searchFhUsers"  resultMap="fhUsers">
+        select a.*, b.access, b.area, b.region, b.permission,
+               b.access, b.id as rolesId
+        from fhuser a
+                 left join roles b on a.fhid = b.fhid
+            <include refid="searchUserParams"/>
+        order by a.id
+    </select>
+
+    <sql id="searchUserParams">
+        where 1=1
+        <if test="byFhId != null ">
+            and a.fhid = #{byFhId}
+        </if>
+        <if test="byName != null ">
+            <bind name="displayName" value="'%' + byName + '%'" />
+            and a.display_name like #{displayName}
+        </if>
+        <!-- by access -->
+    </sql>
+
+    <insert id="saveUserInput" useGeneratedKeys="true" keyColumn="id" keyProperty="id"
+            parameterType="com.microservice.systemservice.models.FhUser">
+        insert into
+            fhuser (fhid,proj_name,display_name,username,password,department,position,status)
+        values
+            (#{fhId},#{projName},#{fullName},#{fhUsername},#{password},#{department},#{fhPosition},#{status})
+    </insert>
+
+    <insert id="saveUserRole" useGeneratedKeys="true" keyColumn="id" keyProperty="rolesId"
+            parameterType="com.microservice.systemservice.models.Roles">
+        insert into roles
+                (fhid,permission,original_area,original_region,area,region,access,privileges)
+            values
+                (#{fhId},#{permission},#{original_area}, #{original_region},#{area},#{region},#{userAccess}, #{privileges})
+    </insert>
+
+    <delete id="dumpFhUser" parameterType="String">
+        delete from fhuser where fhid = #{id} <!-- TODO: ON DELETE CASCADE foreign key relation on roles table -->
+    </delete>
+    <delete id="deleteUserAccess" parameterType="Long">
+        delete from roles where Id = #{Id}
+    </delete>
+
+    <update id="updateUserData" parameterType="com.microservice.systemservice.models.FhUser">
+        UPDATE fhuser
+        SET fhid = #{fhUser.fhId},
+            proj_name=  #{fhUser.projName},
+            display_name= #{fhUser.fullName},
+            username= #{fhUser.fhUsername},
+            password= #{fhUser.password},
+            department=#{fhUser.department},
+            position=#{fhUser.fhPosition},
+            status=#{fhUser.status}
+        WHERE Id = #{fhUser.id}
+    </update>
+
+    <update id="updateUserRole" parameterType="com.microservice.systemservice.models.Roles">
+        UPDATE roles
+        SET
+        permission =  #{role.permission},
+        original_area= #{role.original_area},
+        original_region= #{role.original_region},
+        area= #{role.area},
+        region=#{role.region},
+        privileges=#{role.privileges},
+        access=#{role.userAccess}
+        WHERE Id = #{role.rolesId}
+    </update>
+
+    <select id="loadAllProjects" resultMap="fhProjects">
+        select distinct ProjectName FROM byprojects;
+    </select>
+
+    <select id="loadAllRegionAreaByProjectName"  parameterType="String" resultMap="fhProjects">
+        select * FROM byprojects where ProjectName = #{projectName};
+    </select>
+
+    <select id="loadUserAccess" parameterType="String">
+        select * from roles where fhid = #{fhId}
+    </select>
+
+</mapper>
